@@ -11,9 +11,9 @@ export class Order {
   @Column()
   description: string;
 
-  @ManyToOne(() => User, (user) => user.orders)  // Relacionamento ManyToOne com User
+  @ManyToOne(() => User, (user) => user.orders, { eager: true, onDelete: 'CASCADE' })  // Relacionamento ManyToOne com User
   user: User;  // Cada pedido pertence a um usuário
 
-  @OneToMany(() => Delivery, (delivery) => delivery.order)  // Relacionamento OneToMany com Delivery
+  @OneToMany(() => Delivery, (delivery) => delivery.order, { eager: true, cascade: true })  // Relacionamento OneToMany com Delivery
   deliveries: Delivery[];  // Um pedido pode ter muitas entregas
 }

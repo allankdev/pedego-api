@@ -1,5 +1,4 @@
-// src/store/store.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Store } from './store.entity';
@@ -11,7 +10,14 @@ export class StoreService {
     private readonly storeRepository: Repository<Store>,
   ) {}
 
+  // Método para buscar uma loja pelo subdomínio
   async findBySubdomain(subdomain: string): Promise<Store> {
-    return this.storeRepository.findOne({ where: { subdomain } });
+    const store = await this.storeRepository.findOne({ where: { subdomain } });
+
+    if (!store) {
+      throw new NotFoundException(`Loja '${subdomain}' não encontrada`);  // Exceção em português
+    }
+
+    return store;
   }
 }
