@@ -1,5 +1,5 @@
 // src/order/dto/create-order.dto.ts
-import { IsString, IsInt, IsNotEmpty } from 'class-validator';
+import { IsString, IsInt, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateOrderDto {
   @IsString()
@@ -8,5 +8,9 @@ export class CreateOrderDto {
 
   @IsInt()
   @IsNotEmpty()
-  userId: number;  // ID do usuário que está criando o pedido
+  userId: number;
+
+  @IsOptional() // Pode ser opcional, mas se fornecido deve ser um UUID válido
+  @IsUUID()
+  deliveryId?: string;
 }

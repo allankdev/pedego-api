@@ -1,4 +1,3 @@
-// src/user/user.controller.ts
 import { Controller, Get, Param } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './user.entity';
@@ -7,8 +6,13 @@ import { User } from './user.entity';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  // Método para buscar usuário por ID
   @Get(':id')
   async findOne(@Param('id') id: number): Promise<User> {
-    return this.userService.findOne(id);
+    try {
+      return await this.userService.findOne(id); // Chamando o serviço de findOne
+    } catch (error) {
+      throw error;  // Lançando a exceção do serviço, que já está em português
+    }
   }
 }
