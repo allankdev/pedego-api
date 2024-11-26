@@ -1,29 +1,41 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { StoreModule } from './store/store.module';
-import { ProductModule } from './product/product.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { ReportModule } from './report/report.module';
 import { OrderModule } from './order/order.module';
+import { ProductModule } from './product/product.module';
+import { StoreModule } from './store/store.module';
 import { UserModule } from './user/user.module';
 import { DeliveryModule } from './delivery/delivery.module';
-
+import { PaymentModule } from './payment/payment.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
   imports: [
-    // Configuração do TypeORM com PostgreSQL
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost', // ou seu host de banco de dados
-      port: 5432, // a porta padrão do PostgreSQL
-      username: 'postgres', // seu usuário do PostgreSQL
-      password: '1234', // sua senha do PostgreSQL
-      database: 'pedego', // nome do seu banco de dados
-      entities: [__dirname + '/**/*.entity{.ts,.js}'], // caminho para as entidades
-      synchronize: true, // sincronia automática (use com cuidado em produção)
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: '1234',
+      database: 'pedego',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+      poolSize: 5,
+      connectTimeoutMS: 30000,
+      logging: false,
+      maxQueryExecutionTime: 30000,
+      retryAttempts: 3,
+      retryDelay: 1000,
     }),
-    StoreModule,
-    ProductModule,
+    ReportModule,
     OrderModule,
+    ProductModule,
+    StoreModule,
     UserModule,
     DeliveryModule,
+    PaymentModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
