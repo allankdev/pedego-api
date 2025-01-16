@@ -9,6 +9,8 @@ import { UserModule } from './user/user.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { PaymentModule } from './payment/payment.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -34,6 +36,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     UserModule,
     DeliveryModule,
     PaymentModule,
+    AuthModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],

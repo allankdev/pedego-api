@@ -11,30 +11,33 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // Validação do usuário
-  async validateUser(username: string, plainPassword: string): Promise<any> {  // Renomeei o parâmetro 'password' para 'plainPassword'
-    const user = await this.userService.findByUsername(username); // Recuperando o usuário
-
-    if (!user) {
-      throw new UnauthorizedException('Usuário não encontrado!'); // Caso o usuário não exista
+  // Método para registrar um novo usuário
+  async register(username: string, plainPassword: string): Promise<any> {
+    // Verifica se o usuário já existe
+    const existingUser = await this.userService.findByUsername(username);
+    if (existingUser) {
+      throw new UnauthorizedException('Usuário já existe!');
     }
 
-    // Comparando a senha de forma assíncrona
-    const isPasswordValid = await bcrypt.compare(plainPassword, user.password);
-    
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Senha invalida'); // Caso a senha não seja válida
-    }
+    // Cria o novo usuário com a senha criptografada
+    const newUser = await this.userService.create(username, plainPassword);
 
-    const { password, ...result } = user; // Removendo a senha do objeto de resposta
-    return result;
+    // Cria o payload para o JWT
+    const payload = { username: newUser.username, sub: newUser.id, role: newUser.role };
+
+    // Retorna o token JWT
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
   }
 
-  // Método de login que retorna o token JWT
+  // Método para login
   async login(user: any) {
-    const payload = { username: user.username, sub: user.id, role: user.role }; // Gerando o payload para o JWT
+    // Cria o payload para o JWT
+    const payload = { username: user.username, sub: user.id, role: user.role };
+    // Retorna o token JWT
     return {
-      access_token: this.jwtService.sign(payload), // Gerando o token com o payload
+      access_token: this.jwtService.sign(payload),
     };
   }
 }
