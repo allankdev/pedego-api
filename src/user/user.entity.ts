@@ -7,21 +7,21 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  name: string;
+  @Column({ nullable: false })
+  name: string;  // Nome do usuário
+
+  @Column({ unique: true })
+  email: string;  // Email do usuário (único)
+
+  @Column({ unique: true })
+  username: string;  // Nome de usuário (único)
 
   @Column()
-  email: string;
+  password: string;  // Senha do usuário
 
-  @Column({ unique: true }) // Garantindo que o email seja único
-  username: string;  // Adicionando o campo username
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];  // Relacionamento OneToMany com pedidos, um usuário pode ter vários pedidos
 
-  @Column()
-  password: string;
-
-  @OneToMany(() => Order, (order) => order.user)  // Relacionamento OneToMany com Order
-  orders: Order[];  // Um usuário pode ter muitos pedidos
-
-  @Column({ default: 'CUSTOMER' }) // Pode ser 'ADMIN' ou 'CUSTOMER'
-  role: string;
+  @Column({ default: 'CUSTOMER' })
+  role: string;  // Papel do usuário, padrão é 'CUSTOMER'
 }

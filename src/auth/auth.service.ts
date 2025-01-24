@@ -1,43 +1,54 @@
-// src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt';  // Importando bcrypt
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly userService: UserService,
-    private readonly jwtService: JwtService,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
-  // Método para registrar um novo usuário
-  async register(username: string, plainPassword: string): Promise<any> {
-    // Verifica se o usuário já existe
-    const existingUser = await this.userService.findByUsername(username);
+  // Método para registrar o usuário
+  async register(email: string, username: string, password: string, name: string) {
+    const existingUser = await this.userService.findByEmail(email);
     if (existingUser) {
-      throw new UnauthorizedException('Usuário já existe!');
+      throw new ConflictException('Este e-mail já está em uso');
     }
 
-    // Cria o novo usuário com a senha criptografada
-    const newUser = await this.userService.create(username, plainPassword);
+    // Usando bcrypt para gerar o hash da senha
+    const hashedPassword = await bcrypt.hash(password, 10);  // O 10 é o número de rounds
 
-    // Cria o payload para o JWT
-    const payload = { username: newUser.username, sub: newUser.id, role: newUser.role };
+    // Log para conferir o hash gerado
+    console.log('Hash gerado:', hashedPassword);
 
-    // Retorna o token JWT
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    const user = await this.userService.create({
+      email,
+      username,
+      password,
+      name,
+      role: 'CUSTOMER',
+    });
+
+    return { message: 'Usuário registrado com sucesso', user };
   }
 
-  // Método para login
-  async login(user: any) {
-    // Cria o payload para o JWT
-    const payload = { username: user.username, sub: user.id, role: user.role };
-    // Retorna o token JWT
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  // Método de login
+  async login(email: string, password: string) {
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    // Log para conferir a senha fornecida e o hash armazenado
+    console.log('Senha fornecida:', password);
+    console.log('Hash armazenado:', user.password);
+
+    // Verifica a senha fornecida com o hash armazenado usando bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    console.log('Senha match:', passwordMatch);  // Verifique se a comparação deu true ou false
+
+    if (!passwordMatch) {
+      throw new UnauthorizedException('Senha incorreta');
+    }
+
+    return { message: 'Login bem-sucedido', user };
   }
 }

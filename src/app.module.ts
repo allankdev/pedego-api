@@ -10,6 +10,10 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { PaymentModule } from './payment/payment.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { GeolocationModule } from './geolocation/geolocation.module';
+import { NotificationModule } from './notification/notification.module';
+import { StockModule } from './stock/stock.module';
+
 
 @Module({
   imports: [
@@ -37,6 +41,9 @@ import { AuthModule } from './auth/auth.module';
     DeliveryModule,
     PaymentModule,
     AuthModule,
+    GeolocationModule,
+    NotificationModule,
+    StockModule,
     
   ],
   controllers: [AppController],

@@ -1,8 +1,9 @@
-// src/user/user.service.ts
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './user.entity'; // Certifique-se de que a entidade User está corretamente definida
+import { User } from './user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,41 +13,77 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  // Método findByUsername com exceção personalizada em português
-  async findByUsername(username: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { username } });
-    if (!user) {
-      throw new NotFoundException(`Usuário com o nome de usuário ${username} não encontrado`); // Exceção em português
-    }
-    return user;
-  }
-
-  // Método findOne com exceção personalizada em português
-  async findOne(id: number): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException(`Usuário com o ID ${id} não encontrado`); // Exceção em português
-    }
-    return user;
-  }
-
   // Método para criar um novo usuário
-  async create(username: string, plainPassword: string): Promise<User> {
-    // Verificando se o usuário já existe
-    const existingUser = await this.findByUsername(username);
-    if (existingUser) {
-      throw new ConflictException('Já existe um usuário com esse nome de usuário');
-    }
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const { email, username, password, name, role } = createUserDto;
 
-    // Criptografando a senha
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-    // Criando um novo usuário
-    const newUser = this.userRepository.create({
-      username,
-      password: hashedPassword, // Armazenando a senha criptografada
+    // Verifica se já existe um usuário com o e-mail ou nome de usuário fornecido
+    const existingUser = await this.userRepository.findOne({
+      where: [{ email }, { username }],
     });
 
-    return await this.userRepository.save(newUser); // Salvando o novo usuário no banco
+    if (existingUser) {
+      throw new ConflictException('Já existe um usuário com esse email ou nome de usuário');
+    }
+
+    // Criptografa a senha do usuário
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = this.userRepository.create({
+      email,
+      username,
+      password: hashedPassword,
+      name,
+      role: role || 'CUSTOMER', // Define o papel como 'CUSTOMER' por padrão
+    });
+
+    // Salva o novo usuário no banco de dados
+    return await this.userRepository.save(newUser);
+  }
+
+  // Método para buscar todos os usuários
+  async findAll(): Promise<User[]> {
+    return await this.userRepository.find({ relations: ['orders'] });
+  }
+
+  // Método para buscar um usuário por ID
+  async findOne(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['orders'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    return user;
+  }
+
+  // Método para buscar um usuário pelo e-mail
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { email } });
+  }
+
+  // Método para atualizar um usuário existente
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOne(id);
+
+    // Atualiza o usuário com os dados fornecidos no DTO
+    Object.assign(user, updateUserDto);
+
+    // Se a senha for fornecida no DTO, ela é criptografada e atualizada
+    if (updateUserDto.password) {
+      user.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+
+    // Salva o usuário atualizado no banco de dados
+    return await this.userRepository.save(user);
+  }
+
+  // Método para remover um usuário
+  async remove(id: number): Promise<void> {
+    const user = await this.findOne(id);
+    await this.userRepository.remove(user);
   }
 }

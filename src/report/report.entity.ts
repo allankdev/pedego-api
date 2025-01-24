@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+// src/report/report.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity()
 export class Report {
@@ -6,14 +7,14 @@ export class Report {
   id: number;
 
   @Column()
-  date: Date;
+  date: string;
 
-  @Column()
+  @Column('int')
   totalOrders: number;
 
-  @Column()
+  @Column('float')
   totalRevenue: number;
 
-  @Column()
+  @Column('float')
   averageOrderValue: number;
 }
