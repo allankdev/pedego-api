@@ -1,27 +1,23 @@
-// src/user/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Order } from '../order/order.entity'; // Importando a entidade Order
+import { Order } from '../order/order.entity';
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
-  name: string;  // Nome do usuário
+  @Column()
+  name: string;
 
   @Column({ unique: true })
-  email: string;  // Email do usuário (único)
-
-  @Column({ unique: true })
-  username: string;  // Nome de usuário (único)
+  email: string;
 
   @Column()
-  password: string;  // Senha do usuário
-
-  @OneToMany(() => Order, (order) => order.user)
-  orders: Order[];  // Relacionamento OneToMany com pedidos, um usuário pode ter vários pedidos
+  password: string;
 
   @Column({ default: 'CUSTOMER' })
-  role: string;  // Papel do usuário, padrão é 'CUSTOMER'
+  role: string;
+
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
 }
