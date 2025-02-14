@@ -42,16 +42,39 @@ export class AuthService {
 
   // Função de login
   async login(email: string, password: string) {
+    // Log: Tentativa de login com e-mail
+    console.log(`[LOGIN] Tentando fazer login com o e-mail: ${email}`);
+  
     const user = await this.userService.findByEmail(email);
-
-    if (!user || !(await argon2.verify(user.password, password))) {
+  
+    // Log: Verificando se o usuário existe
+    if (!user) {
+      console.warn(`[LOGIN] Usuário não encontrado com o e-mail: ${email}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
-
+  
+    // Log: Verificando a senha
+    const isPasswordValid = await argon2.verify(user.password, password);
+    if (!isPasswordValid) {
+      console.warn(`[LOGIN] Senha inválida fornecida para o e-mail: ${email}`);
+      throw new UnauthorizedException('Credenciais inválidas');
+    }
+  
+    // Log: Senha validada com sucesso
+    console.log(`[LOGIN] Senha validada com sucesso para o e-mail: ${email}`);
+  
     const payload = { sub: user.id }; // O 'sub' vai armazenar o ID do usuário
     const accessToken = this.jwtService.sign(payload); // Gera o JWT
-
-    return { access_token: accessToken };
+  
+    // Log: Token gerado com sucesso
+    console.log(`[LOGIN] Token JWT gerado com sucesso para o usuário ID: ${user.id}`);
+  
+    // Retorna a resposta com sucesso
+    return {
+      message: 'Login efetuado com sucesso',
+      user,  // Retorna o usuário autenticado
+      access_token: accessToken, // Retorna o token gerado
+    };
   }
 
   // Validação de usuário por ID (usado no JWT Strategy)
