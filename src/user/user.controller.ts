@@ -1,68 +1,34 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
 import { UserService } from './user.service';
-import { User } from './user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-
-// Defina o tipo UserWithoutPassword
-export type UserWithoutPassword = Omit<User, 'password'>;
+import { CreateUserDto } from './dto/create-user.dto'; // Seu DTO de criação de usuário
+import { UpdateUserDto } from './dto/update-user.dto'; // Seu DTO de atualização de usuário
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  // Método para buscar usuário por ID
+  @Post()
+  async create(@Body() userData: CreateUserDto) {
+    return await this.userService.create(userData);
+  }
+
   @Get(':id')
-  async findOne(@Param('id') id: number): Promise<UserWithoutPassword> {
-    try {
-      return await this.userService.findOne(id);
-    } catch (error) {
-      throw error;
-    }
+  async findOne(@Param('id') id: string) {
+    return this.userService.findById(id); // Corrigido para chamar o método correto
   }
 
-  // Método para listar todos os usuários
   @Get()
-  async findAll(): Promise<UserWithoutPassword[]> {
-    try {
-      return await this.userService.findAll();
-    } catch (error) {
-      throw error;
-    }
+  async findAll() {
+    return this.userService.findAll(); // Corrigido para chamar o método correto
   }
 
-  // Método para criar um novo usuário
-  @Post('register')
-  async register(
-    @Body() createUserDto: CreateUserDto
-  ): Promise<User> {
-    try {
-      return await this.userService.create(createUserDto);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Método para editar um usuário existente
   @Put(':id')
-  async update(
-    @Param('id') id: number,
-    @Body() updateUserDto: UpdateUserDto
-  ): Promise<UserWithoutPassword> {
-    try {
-      return await this.userService.update(id, updateUserDto);
-    } catch (error) {
-      throw error;
-    }
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return await this.userService.update(id, updateUserDto);
   }
 
-  // Método para deletar um usuário
   @Delete(':id')
-  async remove(@Param('id') id: number): Promise<void> {
-    try {
-      return await this.userService.remove(id);
-    } catch (error) {
-      throw error;
-    }
+  async remove(@Param('id') id: string) {
+    return await this.userService.remove(id);
   }
 }

@@ -12,9 +12,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  // Alterar o tipo da coluna password para 'text' ou aumentar o tamanho
+  @Column({ type: 'varchar', length: 255 }) // Para TypeORM
   password: string;
-
+  
   @Column({ default: 'CUSTOMER' })
   role: string;
 
