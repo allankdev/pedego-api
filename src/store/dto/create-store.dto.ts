@@ -1,17 +1,19 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateStoreDto {
-  @IsNotEmpty()
+  @ApiProperty({ example: 'Minha Loja', description: 'Nome da loja' })
   @IsString()
-  subdomain: string;
-
   @IsNotEmpty()
-  @IsString()
   name: string;
 
+  @ApiProperty({ example: 'Loja especializada em produtos artesanais', required: false })
+  @IsOptional()
   @IsString()
   description?: string;
 
+  @ApiProperty({ example: 'minhaloja', description: 'Subdomínio único da loja' })
   @IsString()
-  logoUrl?: string;
+  @IsNotEmpty()
+  subdomain: string;
 }

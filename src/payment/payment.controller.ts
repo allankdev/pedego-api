@@ -1,40 +1,70 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UsePipes,
+  ValidationPipe,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { Payment } from './payment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+} from '@nestjs/swagger';
 
+@ApiTags('Payments')
 @Controller('payments')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  // Cria um novo pagamento
   @Post()
+  @ApiOperation({ summary: 'Cria um novo pagamento' })
+  @ApiBody({ type: CreatePaymentDto })
+  @ApiResponse({ status: 201, description: 'Pagamento criado com sucesso', type: Payment })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
   async createPayment(@Body() createPaymentDto: CreatePaymentDto): Promise<Payment> {
     return this.paymentService.createPayment(createPaymentDto);
   }
 
-  // Obtém todos os pagamentos
   @Get()
+  @ApiOperation({ summary: 'Lista todos os pagamentos' })
+  @ApiResponse({ status: 200, description: 'Lista de pagamentos retornada com sucesso', type: [Payment] })
   async getPayments(): Promise<Payment[]> {
     return this.paymentService.getPayments();
   }
 
-  // Obtém um pagamento específico pelo ID
   @Get(':id')
-  async getPaymentById(@Param('id') id: number): Promise<Payment> {
+  @ApiOperation({ summary: 'Busca um pagamento por ID' })
+  @ApiResponse({ status: 200, description: 'Pagamento encontrado com sucesso', type: Payment })
+  async getPaymentById(@Param('id', ParseIntPipe) id: number): Promise<Payment> {
     return this.paymentService.getPaymentById(id);
   }
 
-  // Atualiza um pagamento
   @Put(':id')
-  async updatePayment(@Param('id') id: number, @Body() updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
+  @ApiOperation({ summary: 'Atualiza os dados de um pagamento existente' })
+  @ApiBody({ type: UpdatePaymentDto })
+  @ApiResponse({ status: 200, description: 'Pagamento atualizado com sucesso', type: Payment })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async updatePayment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePaymentDto: UpdatePaymentDto,
+  ): Promise<Payment> {
     return this.paymentService.updatePayment(id, updatePaymentDto);
   }
 
-  // Remove um pagamento
   @Delete(':id')
-  async deletePayment(@Param('id') id: number): Promise<void> {
+  @ApiOperation({ summary: 'Remove um pagamento' })
+  @ApiResponse({ status: 200, description: 'Pagamento removido com sucesso' })
+  async deletePayment(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.paymentService.deletePayment(id);
   }
 }

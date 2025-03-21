@@ -1,26 +1,31 @@
-import { Injectable, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto'; // DTO para atualização de pedido
-import { User } from '../user/user.entity'; // Para validar a existência do usuário
+import { UpdateOrderDto } from './dto/update-order.dto';
+import { User } from '../user/user.entity';
 
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+
     @InjectRepository(User)
-    private userRepository: Repository<User>, // Injetando o repositório de User
+    private userRepository: Repository<User>,
   ) {}
 
-  // Método para criar um pedido
-  async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
-    // Verificando se o usuário existe
-    const user = await this.userRepository.findOne({
-      where: { id: createOrderDto.userId }, // Verificando se o usuário com esse ID existe
-    });
+  // Cria um novo pedido
+  async createOrder(createOrderDto: Omit<CreateOrderDto, 'userId'> & { userId: number }): Promise<Order> {
+    const user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
 
     if (!user) {
       throw new HttpException('Usuário não encontrado', HttpStatus.BAD_REQUEST);
@@ -28,55 +33,65 @@ export class OrderService {
 
     const order = this.orderRepository.create({
       ...createOrderDto,
-      user, // Associa o pedido ao usuário correto
+      user,
     });
 
-    try {
-      return await this.orderRepository.save(order); // Salvando o pedido
-    } catch (error) {
-      throw new HttpException('Erro ao criar pedido', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return await this.orderRepository.save(order);
   }
 
-  // Método para listar todos os pedidos
+  // Lista todos os pedidos com relações
   async findAll(): Promise<Order[]> {
-    try {
-      return await this.orderRepository.find({ relations: ['user'] }); // Retorna todos os pedidos, incluindo a relação com o usuário
-    } catch (error) {
-      throw new HttpException('Erro ao buscar pedidos', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return await this.orderRepository.find({
+      relations: ['user', 'payment', 'deliveries'],
+    });
   }
 
-  // Método para buscar um pedido por ID
+  // Busca um pedido específico por ID
   async findOne(id: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id }, relations: ['user'] });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user', 'payment', 'deliveries'],
+    });
+
     if (!order) {
       throw new NotFoundException('Pedido não encontrado');
     }
+
     return order;
   }
 
-  // Método para atualizar um pedido
+  // Atualiza um pedido
   async updateOrder(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOne(id); // Verificando se o pedido existe
+    const order = await this.findOne(id);
 
-    // Se necessário, você pode adicionar validações de campos específicos ou lógica de negócios aqui
-    Object.assign(order, updateOrderDto); // Atualiza o pedido com os dados fornecidos no DTO
+    Object.assign(order, updateOrderDto);
 
-    try {
-      return await this.orderRepository.save(order); // Salvando o pedido atualizado
-    } catch (error) {
-      throw new HttpException('Erro ao atualizar pedido', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return await this.orderRepository.save(order);
   }
 
-  // Método para deletar um pedido
-  async removeOrder(id: number): Promise<void> {
-    const order = await this.findOne(id); // Verificando se o pedido existe
-    try {
-      await this.orderRepository.remove(order); // Removendo o pedido
-    } catch (error) {
-      throw new HttpException('Erro ao deletar pedido', HttpStatus.INTERNAL_SERVER_ERROR);
+  // Remove (ou cancela) um pedido com validação de acesso
+  async removeOrder(id: number, user: { id: number; role: string }): Promise<void> {
+    const order = await this.findOne(id);
+
+    const isAdmin = user.role === 'ADMIN';
+    const isOwner = order.user.id === user.id;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException('Você não pode deletar este pedido.');
     }
+
+    if (!isAdmin && order.status !== 'pendente') {
+      throw new BadRequestException('Você só pode cancelar pedidos com status pendente.');
+    }
+
+    await this.orderRepository.remove(order);
+  }
+
+  // Busca todos os pedidos de um usuário específico (CUSTOMER)
+  async findByUserId(userId: number): Promise<Order[]> {
+    return await this.orderRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user', 'payment', 'deliveries'],
+    });
   }
 }

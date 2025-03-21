@@ -12,8 +12,8 @@ export class Store {
   @Column()
   description: string;
 
-  @Column()
-  subdomain: string;  // Identificador único para o subdomínio da loja
+  @Column({ unique: true })
+subdomain: string; // Identificador único para o subdomínio da loja
 
   @OneToMany(() => Product, (product) => product.store)
   products: Product[];

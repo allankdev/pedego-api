@@ -10,7 +10,7 @@ import { UserModule } from '../user/user.module';
   imports: [
     UserModule,
     JwtModule.register({
-      secret: 'sua_chave_secreta', // Substitua por uma chave segura
+      secret: 'mysecretkey', // Substitua por uma chave segura
       signOptions: { expiresIn: '1h' }, // Token expira em 1 hora
     }),
   ],

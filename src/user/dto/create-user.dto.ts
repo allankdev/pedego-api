@@ -1,29 +1,27 @@
-// src/user/dto/create-user.dto.ts
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CUSTOMER = 'CUSTOMER',
+}
+
 export class CreateUserDto {
-    name: string;
-    email: string;
-    password: string;
-    role?: string;
-  }
-  
-  // src/user/dto/update-user.dto.ts
-  export class UpdateUserDto {
-    name?: string;
-    email?: string;
-    password?: string;
-    role?: string;
-  }
-  
-  // src/order/dto/create-order.dto.ts
-  export class CreateOrderDto {
-    product: string;
-    price: number;
-    userId: number;
-  }
-  
-  // src/order/dto/update-order.dto.ts
-  export class UpdateOrderDto {
-    product?: string;
-    price?: number;
-  }
-  
+  @ApiProperty({ example: 'João da Silva' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ example: 'joao@email.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'senha123' })
+  @IsString()
+  @MinLength(6)
+  password: string;
+
+  @ApiProperty({ enum: UserRole, example: UserRole.CUSTOMER })
+  @IsEnum(UserRole)
+  role: UserRole;
+}

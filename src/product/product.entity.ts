@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne
+} from 'typeorm';
 import { Store } from '../store/store.entity';
 
 @Entity()
@@ -9,9 +14,16 @@ export class Product {
   @Column()
   name: string;
 
-  @Column('decimal')
+  @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
-  @ManyToOne(() => Store, (store) => store.products)
+  @Column()
+  description: string;
+
+  @Column({ default: true })
+  available: boolean;
+
+  // Relacionamento: vários produtos pertencem a uma loja
+  @ManyToOne(() => Store, (store) => store.products, { onDelete: 'CASCADE' })
   store: Store;
 }

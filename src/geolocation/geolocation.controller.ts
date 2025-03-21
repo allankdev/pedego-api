@@ -1,23 +1,31 @@
-import { Controller, Get, Param, Put, Body } from '@nestjs/common';
+import { Controller, Get, Param, Put, Body, NotFoundException, ParseIntPipe } from '@nestjs/common';
 import { GeolocationService } from './geolocation.service';
 import { Geolocation } from './geolocation.entity';
+import { UpdateGeolocationDto } from './dto/update-geolocation.dto';
+import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 
+@ApiTags('Geolocation') // 🔹 Organiza no Swagger
 @Controller('geolocation')
 export class GeolocationController {
   constructor(private readonly geolocationService: GeolocationService) {}
 
-  // Endpoint para obter a geolocalização de um usuário
   @Get(':userId')
-  async getGeolocation(@Param('userId') userId: number): Promise<Geolocation> {
-    return this.geolocationService.getGeolocation(userId);
+  @ApiOperation({ summary: 'Obter a geolocalização de um usuário' })
+  async getGeolocation(@Param('userId', ParseIntPipe) userId: number): Promise<Geolocation> {
+    const geolocation = await this.geolocationService.getGeolocation(userId);
+    if (!geolocation) {
+      throw new NotFoundException(`Geolocalização do usuário ${userId} não encontrada.`);
+    }
+    return geolocation;
   }
 
-  // Endpoint para atualizar a geolocalização de um usuário
   @Put(':userId')
+  @ApiOperation({ summary: 'Atualizar a geolocalização de um usuário' })
+  @ApiBody({ type: UpdateGeolocationDto }) // 🔹 Exibe o body no Swagger
   async updateGeolocation(
-    @Param('userId') userId: number,
-    @Body() { latitude, longitude }: { latitude: number; longitude: number },
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() updateGeolocationDto: UpdateGeolocationDto,
   ): Promise<void> {
-    await this.geolocationService.updateGeolocation(userId, latitude, longitude);
+    await this.geolocationService.updateGeolocation(userId, updateGeolocationDto);
   }
 }

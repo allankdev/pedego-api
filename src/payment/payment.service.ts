@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './payment.entity';
@@ -12,20 +12,38 @@ export class PaymentService {
     private paymentRepository: Repository<Payment>,
   ) {}
 
-  // Método para criar um novo pagamento
+  // Criar novo pagamento (vinculado a um pedido)
   async createPayment(createPaymentDto: CreatePaymentDto): Promise<Payment> {
-    const payment = this.paymentRepository.create(createPaymentDto);
+    const existingPayment = await this.paymentRepository.findOne({
+      where: { order: { id: createPaymentDto.orderId } },
+      relations: ['order'],
+    });
+
+    if (existingPayment) {
+      throw new ConflictException(`Este pedido já possui um pagamento registrado.`);
+    }
+
+    const payment = this.paymentRepository.create({
+      ...createPaymentDto,
+      order: { id: createPaymentDto.orderId }, // Relacionamento por ID
+    });
+
     return await this.paymentRepository.save(payment);
   }
 
-  // Método para buscar todos os pagamentos
+  // Listar todos os pagamentos (com dados do pedido incluso)
   async getPayments(): Promise<Payment[]> {
-    return this.paymentRepository.find();
+    return this.paymentRepository.find({
+      relations: ['order'], // inclui dados do pedido
+    });
   }
 
-  // Método para buscar um pagamento específico pelo ID
+  // Buscar um pagamento específico com seu pedido relacionado
   async getPaymentById(id: number): Promise<Payment> {
-    const payment = await this.paymentRepository.findOne({ where: { id } });
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+      relations: ['order'], // inclui dados do pedido
+    });
 
     if (!payment) {
       throw new NotFoundException(`Pagamento com ID ${id} não encontrado`);
@@ -34,7 +52,7 @@ export class PaymentService {
     return payment;
   }
 
-  // Método para atualizar um pagamento
+  // Atualizar um pagamento
   async updatePayment(id: number, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
     const payment = await this.getPaymentById(id);
 
@@ -42,7 +60,7 @@ export class PaymentService {
     return await this.paymentRepository.save(payment);
   }
 
-  // Método para deletar um pagamento
+  // Deletar um pagamento
   async deletePayment(id: number): Promise<void> {
     const payment = await this.getPaymentById(id);
     await this.paymentRepository.remove(payment);
