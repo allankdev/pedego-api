@@ -1,21 +1,40 @@
-// src/auth/auth.controller.ts
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UsePipes,
+  ValidationPipe,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { RegisterDto } from './dtos/register.dto';
+import { LoginDto } from './dtos/login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
-  // Rota para registrar um novo usuário
   @Post('register')
-  async register(@Body() body) {
-    const { username, password } = body; // Extraindo os campos 'username' e 'password' do corpo da requisição
-    return this.authService.register(username, password); // Chamando o serviço para registrar o usuário
+  @UsePipes(new ValidationPipe())
+  async register(@Body() registerDto: RegisterDto) {
+    try {
+      return await this.authService.register(
+        registerDto.name,
+        registerDto.email,
+        registerDto.password,
+      );
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
-  // Rota para realizar login
   @Post('login')
-  async login(@Body() body) {
-    return this.authService.login(body); // Chamando o serviço para fazer o login
+  @UsePipes(new ValidationPipe())
+  async login(@Body() loginDto: LoginDto) {
+    try {
+      return await this.authService.login(loginDto.email, loginDto.password);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }

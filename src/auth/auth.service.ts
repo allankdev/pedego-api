@@ -1,8 +1,7 @@
-// src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
+import * as argon2 from 'argon2'; // Usando argon2 para hashing
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -11,33 +10,92 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // Método para registrar um novo usuário
-  async register(username: string, plainPassword: string): Promise<any> {
-    // Verifica se o usuário já existe
-    const existingUser = await this.userService.findByUsername(username);
+  // Função de registro - Usando somente argon2
+  async register(name: string, email: string, password: string) {
+    console.log('[AuthService] Registro iniciado...');
+    console.log(`[AuthService] Parâmetros recebidos: nome = ${name}, e-mail = ${email}`);
+
+    // Verifica se o e-mail já está em uso
+    console.log('[AuthService] Verificando se o e-mail já está em uso...');
+    const existingUser = await this.userService.findByEmail(email);
     if (existingUser) {
-      throw new UnauthorizedException('Usuário já existe!');
+      console.log('[AuthService] E-mail já está em uso:', email);
+      throw new ConflictException('Este e-mail já está em uso');
     }
+    console.log('[AuthService] E-mail disponível.');
 
-    // Cria o novo usuário com a senha criptografada
-    const newUser = await this.userService.create(username, plainPassword);
+    // Gerar o hash da senha usando argon2 com parâmetros seguros
+    console.log('[AuthService] Gerando hash para a senha...');
+    const hashedPassword = await argon2.hash(password, {
+      type: argon2.argon2id,   // argon2id é mais seguro para uso geral
+      memoryCost: 65536,        // 64MB de memória
+      timeCost: 3,              // 3 iterações
+      parallelism: 4,           // 4 threads
+    });
+    console.log('[AuthService] Senha hashada com argon2:', hashedPassword); // Logando o hash gerado (em produção, não logue!)
 
-    // Cria o payload para o JWT
-    const payload = { username: newUser.username, sub: newUser.id, role: newUser.role };
+    // Criação do usuário no banco de dados
+    console.log('[AuthService] Criando usuário no banco de dados...');
+    const user = await this.userService.create({
+      name,
+      email,
+      password,
+      role: 'CUSTOMER', // ou o papel adequado para o seu sistema
+    });
+    console.log('[AuthService] Usuário criado com sucesso no banco de dados. ID:', user.id);
 
-    // Retorna o token JWT
+    // Remover a senha do objeto do usuário antes de retornar
+    const { password: _, ...userWithoutPassword } = user;
+    console.log('[AuthService] Removendo a senha do objeto do usuário.');
+
+    console.log('[AuthService] Registro concluído com sucesso.');
     return {
-      access_token: this.jwtService.sign(payload),
+      message: 'Usuário registrado com sucesso',
+      user: userWithoutPassword,
     };
   }
 
-  // Método para login
-  async login(user: any) {
-    // Cria o payload para o JWT
-    const payload = { username: user.username, sub: user.id, role: user.role };
-    // Retorna o token JWT
+  // Função de login - Verificação com argon2
+  async login(email: string, password: string) {
+    console.log('[AuthService] Login iniciado...');
+    console.log(`[AuthService] Parâmetros recebidos: e-mail = ${email}`);
+
+    // Buscar o usuário pelo e-mail
+    console.log('[AuthService] Buscando usuário pelo e-mail...');
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      console.log('[AuthService] Usuário não encontrado:', email);
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+    console.log('[AuthService] Usuário encontrado:', user.id);
+
+    // Verificar a senha usando argon2
+    console.log('[AuthService] Verificando a senha...');
+    const passwordMatch = await argon2.verify(user.password, password);
+    if (!passwordMatch) {
+      console.log('[AuthService] Senha incorreta para o usuário:', email);
+      throw new UnauthorizedException('Senha incorreta');
+    }
+    console.log('[AuthService] Senha verificada com sucesso.');
+
+    // Gerar o token JWT
+    console.log('[AuthService] Gerando o token JWT...');
+    const payload = { email: user.email, sub: user.id, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+    console.log('[AuthService] Token JWT gerado com sucesso.');
+
+    // Remover a senha do objeto do usuário antes de retornar
+    const { password: _, ...userWithoutPassword } = user;
+    console.log('[AuthService] Removendo a senha do objeto do usuário para a resposta.');
+
+    console.log('[AuthService] Login concluído com sucesso.');
     return {
-      access_token: this.jwtService.sign(payload),
+      message: 'Login bem-sucedido',
+      accessToken,
+      user: userWithoutPassword,
     };
   }
 }
+
+
+

@@ -1,6 +1,5 @@
-// src/user/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Order } from '../order/order.entity'; // Importando a entidade Order
+import { Order } from '../order/order.entity';
 
 @Entity()
 export class User {
@@ -10,18 +9,15 @@ export class User {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
-
-  @Column({ unique: true }) // Garantindo que o email seja único
-  username: string;  // Adicionando o campo username
 
   @Column()
   password: string;
 
-  @OneToMany(() => Order, (order) => order.user)  // Relacionamento OneToMany com Order
-  orders: Order[];  // Um usuário pode ter muitos pedidos
-
-  @Column({ default: 'CUSTOMER' }) // Pode ser 'ADMIN' ou 'CUSTOMER'
+  @Column({ default: 'CUSTOMER' })
   role: string;
+
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
 }

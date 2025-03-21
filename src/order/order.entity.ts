@@ -1,7 +1,7 @@
 // src/order/order.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
-import { User } from '../user/user.entity';  // Importando a entidade User
-import { Delivery } from '../delivery/delivery.entity';  // Importando a entidade Delivery
+import { User } from '../user/user.entity';
+import { Delivery } from '../delivery/delivery.entity'; // Importando Delivery
 
 @Entity()
 export class Order {
@@ -9,11 +9,14 @@ export class Order {
   id: number;
 
   @Column()
-  description: string;
+  product: string;
 
-  @ManyToOne(() => User, (user) => user.orders, { eager: true, onDelete: 'CASCADE' })  // Relacionamento ManyToOne com User
-  user: User;  // Cada pedido pertence a um usuário
+  @Column('decimal')
+  price: number;
 
-  @OneToMany(() => Delivery, (delivery) => delivery.order, { eager: true, cascade: true })  // Relacionamento OneToMany com Delivery
-  deliveries: Delivery[];  // Um pedido pode ter muitas entregas
+  @ManyToOne(() => User, (user) => user.orders)
+  user: User;
+
+  @OneToMany(() => Delivery, (delivery) => delivery.order)
+  deliveries: Delivery[];  // Relacionamento OneToMany com Delivery
 }
