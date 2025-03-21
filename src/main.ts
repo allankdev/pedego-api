@@ -7,19 +7,18 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Middleware para parsing de cookies
   app.use(cookieParser());
 
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: '*', // Ou especificar o frontend: 'http://localhost:4000'
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type, Accept, Authorization', // Adiciona 'Authorization'
-    credentials: true,  // Permite cookies
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+    credentials: true,
   });
 
-  setupSwagger(app);
+  setupSwagger(app); // 👈 Isso já chama a função correta
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);

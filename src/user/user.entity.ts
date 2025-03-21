@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Order } from '../order/order.entity';
+import { UserRole } from './enums/user-role.enum'; // ✅ Novo local do enum
 
 @Entity()
 export class User {
@@ -12,12 +13,15 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  // Alterar o tipo da coluna password para 'text' ou aumentar o tamanho
-  @Column({ type: 'varchar', length: 255 }) // Para TypeORM
+  @Column({ type: 'varchar', length: 255 })
   password: string;
-  
-  @Column({ default: 'CUSTOMER' })
-  role: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.CUSTOMER,
+  })
+  role: UserRole;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];

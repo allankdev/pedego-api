@@ -9,12 +9,12 @@ export class Report {
   @Column()
   date: string;
 
-  @Column('int')
+  @Column({ default: 0, nullable: true })
   totalOrders: number;
 
-  @Column('float')
+  @Column('float', { default: 0, nullable: true })
   totalRevenue: number;
 
-  @Column('float')
+  @Column('float', { default: 0, nullable: true })
   averageOrderValue: number;
 }

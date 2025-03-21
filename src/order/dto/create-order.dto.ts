@@ -1,16 +1,34 @@
-// src/order/dto/create-order.dto.ts
-import { IsString, IsInt, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { OrderStatus } from '../order.entity';
 
 export class CreateOrderDto {
+  @ApiProperty({
+    example: 'Hambúrguer Artesanal',
+    description: 'Produto do pedido',
+  })
   @IsString()
   @IsNotEmpty()
-  description: string;
+  product: string;
 
-  @IsInt()
+  @ApiProperty({
+    example: 29.99,
+    description: 'Preço do pedido',
+  })
+  @IsNumber()
   @IsNotEmpty()
-  userId: number;
+  price: number;
 
-  @IsOptional() // Pode ser opcional, mas se fornecido deve ser um UUID válido
-  @IsUUID()
-  deliveryId?: string;
+  // ❌ REMOVIDO: O userId vem do backend (req.user.id)
+  // userId: number;
+
+  @ApiProperty({
+    example: 'pendente',
+    enum: OrderStatus,
+    required: false,
+    description: 'Status do pedido (opcional, padrão é "pendente")',
+  })
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
 }

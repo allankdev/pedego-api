@@ -5,17 +5,17 @@ import { Order } from '../order/order.entity'; // Importando a entidade Order
 @Entity()
 export class Delivery {
   @PrimaryGeneratedColumn()
-  id: number;  // ID único para cada entrega
+  id: number;
 
   @Column()
-  address: string;  // Endereço da entrega
+  address: string;
 
-  @Column()
-  status: string;  // Status da entrega (ex: 'pendente', 'entregue', etc.)
+  @Column({ default: 'pendente' }) // Agora tem valor padrão
+  status: string;
 
   @ManyToOne(() => Order, (order) => order.id)
-  order: Order;  // Relacionamento ManyToOne com Order, cada entrega pertence a um pedido
+  order: Order;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  deliveryDate: Date;  // Data de entrega, com valor padrão de timestamp atual
+  deliveryDate: Date;
 }

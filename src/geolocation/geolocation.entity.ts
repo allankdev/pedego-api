@@ -1,37 +1,43 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class Geolocation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   userId: number;
 
-  @Column()
+  @Column('double precision')
   latitude: number;
 
-  @Column()
+  @Column('double precision')
   longitude: number;
 
-  @Column()
-  address: string;
+  @Column({ nullable: true }) // 🔹 agora não é mais obrigatório
+  address?: string;
 
-  @Column()
-  city: string;
+  @Column({ nullable: true })
+  city?: string;
 
-  @Column()
-  state: string;
+  @Column({ nullable: true })
+  state?: string;
 
-  @Column()
-  country: string;
+  @Column({ nullable: true })
+  country?: string;
 
-  @Column()
-  postalCode: string;
+  @Column({ nullable: true })
+  postalCode?: string;
 
-  @Column()
+  @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @UpdateDateColumn()
   updatedAt: Date;
 }

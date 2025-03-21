@@ -1,6 +1,14 @@
-// dto/update-notification.dto.ts
+import { IsString, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
 export class UpdateNotificationDto {
-    message: string;
-    read: boolean;
-  }
-  
+  @ApiProperty({ example: 'Pedido atualizado!', required: false })
+  @IsOptional()
+  @IsString()
+  message?: string;
+
+  @ApiProperty({ example: 'info', required: false })
+  @IsOptional()
+  @IsString()
+  type?: string;
+}

@@ -1,23 +1,54 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards, UsePipes, ValidationPipe, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Put,
+  Delete,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+  HttpException,
+  HttpStatus,
+  ParseIntPipe,
+  Req,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { OrderService } from './order.service';
 import { Order } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto'; // DTO para atualização do pedido
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiBody,
+  ApiResponse,
+} from '@nestjs/swagger';
 
+@ApiTags('Orders')
+@ApiBearerAuth('access-token')
 @Controller('orders')
-@UseGuards(JwtAuthGuard, RolesGuard) // Protege todas as rotas com JWT e Role Guards
+@UseGuards(JwtAuthGuard)
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
-  // Rota para criar um pedido
   @Post()
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Validação do DTO
-  async createOrder(@Body() orderData: CreateOrderDto): Promise<Order> {
+  @ApiOperation({ summary: 'Cria um novo pedido (CUSTOMER ou ADMIN)' })
+  @ApiBody({ type: CreateOrderDto })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async createOrder(
+    @Body() orderData: CreateOrderDto,
+    @Req() req: Request,
+  ): Promise<Order> {
     try {
-      return await this.orderService.createOrder(orderData);
+      const user = req.user as any;
+      return await this.orderService.createOrder({
+        ...orderData,
+        userId: user.id,
+      });
     } catch (error) {
       throw new HttpException(
         {
@@ -30,30 +61,30 @@ export class OrderController {
     }
   }
 
-  // Rota para listar todos os pedidos (apenas para administradores)
   @Get()
-  @Roles('ADMIN') // Apenas administradores podem acessar esta rota
-  async findAll(): Promise<Order[]> {
-    try {
-      return await this.orderService.findAll();
-    } catch (error) {
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: 'Erro ao buscar pedido',
-          message: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+  @ApiOperation({ summary: 'Lista todos os pedidos (somente ADMIN)' })
+  async findAll(@Req() req: Request): Promise<Order[]> {
+    const user = req.user as any;
+    if (user.role !== 'ADMIN') {
+      throw new HttpException('Acesso negado', HttpStatus.FORBIDDEN);
     }
+    return this.orderService.findAll();
   }
 
-  // Rota para editar um pedido
+  @Get('me')
+  @ApiOperation({ summary: 'Lista os pedidos do usuário autenticado' })
+  async findMyOrders(@Req() req: Request): Promise<Order[]> {
+    const user = req.user as any;
+    return await this.orderService.findByUserId(user.id);
+  }
+
   @Put(':id')
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Validação do DTO
+  @ApiOperation({ summary: 'Atualiza um pedido' })
+  @ApiBody({ type: UpdateOrderDto })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async updateOrder(
-    @Param('id') id: number, 
-    @Body() updateOrderDto: UpdateOrderDto
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateOrderDto: UpdateOrderDto,
   ): Promise<Order> {
     try {
       return await this.orderService.updateOrder(id, updateOrderDto);
@@ -69,20 +100,23 @@ export class OrderController {
     }
   }
 
-  // Rota para deletar um pedido
   @Delete(':id')
-  @Roles('ADMIN') // Apenas administradores podem acessar esta rota
-  async removeOrder(@Param('id') id: number): Promise<void> {
+  @ApiOperation({ summary: 'Remove um pedido (usuário ou admin)' })
+  async removeOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<void> {
     try {
-      await this.orderService.removeOrder(id);
+      const user = req.user as any;
+      await this.orderService.removeOrder(id, user);
     } catch (error) {
       throw new HttpException(
         {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          status: HttpStatus.BAD_REQUEST,
           error: 'Erro ao deletar pedido',
           message: error.message,
         },
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }

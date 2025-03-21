@@ -9,44 +9,48 @@ import { UpdateStockDto } from './dto/update-stock.dto';
 export class StockService {
   constructor(
     @InjectRepository(Stock)
-    private stockRepository: Repository<Stock>,
+    private readonly stockRepository: Repository<Stock>,
   ) {}
 
-  // Método para buscar o estoque de um produto específico em um restaurante
-  async getStock(productId: number, restaurantId: number): Promise<Stock> {
+  // Retorna o estoque de um produto específico em uma loja (store)
+  async getStock(productId: number, storeId: number): Promise<Stock> {
     const stock = await this.stockRepository.findOne({
-      where: { productId, restaurantId },
+      where: { productId, storeId },
     });
 
     if (!stock) {
-      throw new NotFoundException(`Estoque não encontrado para o produto ${productId} no restaurante ${restaurantId}`);
+      throw new NotFoundException(
+        `Estoque não encontrado para o produto ${productId} na loja ${storeId}`,
+      );
     }
 
     return stock;
   }
 
-  // Método para buscar todos os estoques
+  // Retorna todos os registros de estoque
   async findAll(): Promise<Stock[]> {
     return this.stockRepository.find();
   }
 
-  // Método para criar um novo estoque
+  // Cria um novo estoque
   async create(createStockDto: CreateStockDto): Promise<Stock> {
+    // createStockDto deve conter productId, storeId, quantity
     const newStock = this.stockRepository.create(createStockDto);
-    return await this.stockRepository.save(newStock);
+    return this.stockRepository.save(newStock);
   }
 
-  // Método para atualizar a quantidade de um produto no estoque
-  async updateStock(productId: number, restaurantId: number, quantity: number): Promise<Stock> {
-    const stock = await this.getStock(productId, restaurantId);
-    
+  // Atualiza a quantidade em estoque de um produto em uma loja
+  async updateStock(productId: number, storeId: number, quantity: number): Promise<Stock> {
+    // Reaproveita o getStock para verificar se existe
+    const stock = await this.getStock(productId, storeId);
     stock.quantity = quantity;
-    return await this.stockRepository.save(stock);
+
+    return this.stockRepository.save(stock);
   }
 
-  // Método para remover um estoque
-  async remove(productId: number, restaurantId: number): Promise<void> {
-    const stock = await this.getStock(productId, restaurantId);
+  // Remove o registro de estoque de um produto em uma loja
+  async remove(productId: number, storeId: number): Promise<void> {
+    const stock = await this.getStock(productId, storeId);
     await this.stockRepository.remove(stock);
   }
 }

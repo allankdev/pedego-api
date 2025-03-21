@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class Notification {
@@ -10,10 +16,14 @@ export class Notification {
 
   @Column()
   message: string;
+  
+  @Column({ default: false })
+  read: boolean;
+  
 
-  @Column()
+  @CreateDateColumn({ type: 'timestamp' }) // 🔥 insere a data automaticamente
   createdAt: Date;
 
-  @Column()
-  read: boolean;
+  @UpdateDateColumn({ type: 'timestamp' }) // 🔄 atualiza sempre que editar
+  updatedAt: Date;
 }

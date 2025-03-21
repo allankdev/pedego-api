@@ -6,11 +6,11 @@ export class Stock {
   id: number;
 
   @Column()
-  productId: number;
+  productId: number; // ou usar ManyToOne para Product
 
   @Column()
   quantity: number;
 
   @Column()
-  restaurantId: number;
+  storeId: number; // substitui restaurantId
 }
