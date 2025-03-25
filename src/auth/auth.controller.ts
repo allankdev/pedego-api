@@ -9,6 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { RegisterStoreDto } from './dtos/register-store.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -22,17 +23,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Registro de novo usuário' })
+  @ApiOperation({ summary: 'Registro de novo usuário (CUSTOMER)' })
   @ApiBody({ type: RegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Usuário registrado com sucesso',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Erro ao registrar usuário',
-  })
-  @UsePipes(new ValidationPipe())
+  @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Erro ao registrar usuário' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
   async register(@Body() registerDto: RegisterDto) {
     try {
       return await this.authService.register(
@@ -45,17 +40,25 @@ export class AuthController {
     }
   }
 
+  @Post('register-as-store')
+  @ApiOperation({ summary: 'Registro de loja com 30 dias grátis (ADMIN)' })
+  @ApiBody({ type: RegisterStoreDto })
+  @ApiResponse({ status: 201, description: 'Loja registrada e trial iniciado' })
+  @ApiResponse({ status: 400, description: 'Erro ao registrar loja' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async registerAsStore(@Body() registerStoreDto: RegisterStoreDto) {
+    try {
+      return await this.authService.registerAsStore(registerStoreDto);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
   @Post('login')
-  @ApiOperation({ summary: 'Login do usuário' })
+  @ApiOperation({ summary: 'Login do usuário (CUSTOMER, ADMIN ou SUPER_ADMIN)' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Login realizado com sucesso',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Credenciais inválidas',
-  })
+  @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Credenciais inválidas' })
   @UsePipes(new ValidationPipe())
   async login(@Body() loginDto: LoginDto) {
     try {

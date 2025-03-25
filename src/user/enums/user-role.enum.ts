@@ -1,6 +1,7 @@
 // src/user/enums/user-role.enum.ts
+
 export enum UserRole {
-    ADMIN = 'ADMIN',
-    CUSTOMER = 'CUSTOMER',
-  }
-  
+  CUSTOMER = 'CUSTOMER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}

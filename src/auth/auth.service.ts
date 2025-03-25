@@ -1,35 +1,40 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
-import * as argon2 from 'argon2';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as argon2 from 'argon2';
+import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
-import { UserRole } from '../user/enums/user-role.enum'; // ✅ Corrigido
+import { StoreService } from '../store/store.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { RegisterStoreDto } from './dtos/register-store.dto';
+import { UserRole } from '../user/enums/user-role.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly storeService: StoreService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
-  // Registro de usuário
+  // Registro normal de usuário (CUSTOMER)
   async register(name: string, email: string, password: string) {
-    console.log('[AuthService] Registro iniciado...');
-
     const hashedPassword = await argon2.hash(password);
-    console.log('[AuthService] Senha hash gerada:', hashedPassword);
 
     const user = await this.userService.create({
       name,
       email,
       password: hashedPassword,
-      role: UserRole.CUSTOMER, // ✅ Corrigido para usar o enum
+      role: UserRole.CUSTOMER,
     });
 
     const savedUser = await this.userService.findByEmail(email);
 
     if (hashedPassword !== savedUser.password) {
-      console.log('[ERRO] O hash mudou ao salvar no banco!');
       throw new ConflictException('Erro ao salvar a senha no banco de dados');
     }
 
@@ -39,24 +44,43 @@ export class AuthService {
     };
   }
 
-  // Login de usuário
+  // Registro como loja (recebe role ADMIN + trial de 30 dias)
+  async registerAsStore(dto: RegisterStoreDto) {
+    const hashedPassword = await argon2.hash(dto.password);
+
+    const user = await this.userService.create({
+      name: dto.name,
+      email: dto.email,
+      password: hashedPassword,
+      role: UserRole.ADMIN,
+    });
+
+    const store = await this.storeService.create({
+      name: dto.storeName,
+      description: dto.description,
+      subdomain: dto.subdomain,
+    });
+
+    await this.subscriptionService.createTrial(user.id); // 30 dias grátis
+
+    return {
+      message: 'Loja criada com 30 dias de teste grátis!',
+      user,
+      store,
+    };
+  }
+
+  // Login do usuário
   async login(email: string, password: string) {
-    console.log(`[LOGIN] Tentativa de login com o e-mail: ${email}`);
-
     const user = await this.userService.findByEmail(email);
-
     if (!user) {
-      console.warn(`[LOGIN] Usuário não encontrado: ${email}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
-      console.warn(`[LOGIN] Senha inválida para o e-mail: ${email}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
-
-    console.log(`[LOGIN] Autenticado com sucesso: ${user.email}`);
 
     const payload = {
       sub: user.id,
@@ -72,6 +96,7 @@ export class AuthService {
     };
   }
 
+  // Validação do usuário via token
   async validateUserById(id: number): Promise<User> {
     const user = await this.userService.findById(id);
     if (!user) {

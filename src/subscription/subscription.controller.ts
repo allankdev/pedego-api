@@ -1,0 +1,94 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  ParseIntPipe,
+  NotFoundException,
+  UsePipes,
+  ValidationPipe,
+  UseGuards,
+} from '@nestjs/common';
+import { SubscriptionService } from './subscription.service';
+import { Subscription } from './subscription.entity';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../user/enums/user-role.enum';
+
+@ApiTags('Subscriptions')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('subscriptions')
+export class SubscriptionController {
+  constructor(private readonly subscriptionService: SubscriptionService) {}
+
+  @Get()
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Lista todas as assinaturas (apenas SUPER_ADMIN)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de assinaturas retornada com sucesso',
+    type: [Subscription],
+  })
+  async findAll(): Promise<Subscription[]> {
+    return this.subscriptionService.findAll();
+  }
+
+  @Get(':userId')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Busca a assinatura de um usuário específico (SUPER_ADMIN)' })
+  @ApiParam({ name: 'userId', type: Number, description: 'ID do usuário' })
+  @ApiResponse({
+    status: 200,
+    description: 'Assinatura encontrada com sucesso',
+    type: Subscription,
+  })
+  @ApiResponse({ status: 404, description: 'Assinatura não encontrada' })
+  async findByUserId(
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<Subscription> {
+    const subscription = await this.subscriptionService.findByUserId(userId);
+    if (!subscription) {
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`);
+    }
+    return subscription;
+  }
+
+  @Put('check-expiration')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Verifica e atualiza o status de assinaturas expiradas (SUPER_ADMIN)' })
+  @ApiResponse({ status: 200, description: 'Assinaturas expiradas foram marcadas como EXPIRED' })
+  async checkAndExpireSubscriptions(): Promise<{ updated: number }> {
+    return this.subscriptionService.checkAndExpireSubscriptions();
+  }
+
+  @Post('upgrade')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Faz upgrade de uma assinatura para mensal ou anual (SUPER_ADMIN)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number' },
+        plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
+      },
+      required: ['userId', 'plan'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Assinatura atualizada com sucesso' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
+    return this.subscriptionService.upgradeSubscription(body.userId, body.plan);
+  }
+}

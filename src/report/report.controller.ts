@@ -7,6 +7,7 @@ import {
   ValidationPipe,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ReportService } from './report.service';
 import { Report } from './report.entity';
@@ -16,15 +17,22 @@ import {
   ApiOperation,
   ApiBody,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('Reports')
+@ApiBearerAuth('access-token')
 @Controller('report')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cria um novo relatório' })
+  @ApiOperation({ summary: 'Cria um novo relatório (somente ADMIN)' })
   @ApiBody({ type: CreateReportDto })
   @ApiResponse({
     status: 201,
@@ -48,7 +56,7 @@ export class ReportController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtém todos os relatórios' })
+  @ApiOperation({ summary: 'Obtém todos os relatórios (somente ADMIN)' })
   @ApiResponse({
     status: 200,
     description: 'Lista de relatórios retornada com sucesso',

@@ -11,6 +11,7 @@ import {
   ValidationPipe,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { Product } from './product.entity';
@@ -22,7 +23,11 @@ import {
   ApiBody,
   ApiResponse,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('Products')
 @Controller('products')
@@ -51,8 +56,12 @@ export class ProductController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Cria um novo produto' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Cria um novo produto (Apenas ADMIN)' })
   @ApiBody({ type: CreateProductDto })
+  @ApiResponse({ status: 201, description: 'Produto criado com sucesso', type: Product })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createProductDto: CreateProductDto): Promise<Product> {
     try {
@@ -70,9 +79,13 @@ export class ProductController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Atualiza um produto' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Atualiza um produto (Apenas ADMIN)' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do produto' })
-  @ApiBody({ type: UpdateProductDto }) // Exibe os campos do UpdateProductDto no Swagger
+  @ApiBody({ type: UpdateProductDto })
+  @ApiResponse({ status: 200, description: 'Produto atualizado com sucesso', type: Product })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -93,7 +106,10 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove um produto' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Remove um produto (Apenas ADMIN)' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do produto' })
   @ApiResponse({ status: 200, description: 'Produto removido com sucesso' })
   @ApiResponse({ status: 404, description: 'Produto não encontrado' })

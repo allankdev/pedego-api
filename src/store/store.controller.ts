@@ -10,26 +10,34 @@ import {
   BadRequestException,
   UsePipes,
   ValidationPipe,
+  UseGuards,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { StoreService } from './store.service';
-import { CreateStoreDto } from './dto/create-store.dto';
-import { UpdateStoreDto } from './dto/update-store.dto';
 import {
   ApiTags,
   ApiOperation,
   ApiBody,
   ApiParam,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { StoreService } from './store.service';
+import { CreateStoreDto } from './dto/create-store.dto';
+import { UpdateStoreDto } from './dto/update-store.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @ApiTags('Stores')
+@ApiBearerAuth('access-token')
 @Controller('stores')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class StoreController {
   constructor(private readonly storeService: StoreService) {}
 
   @Post()
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Cria uma nova loja' })
   @ApiBody({ type: CreateStoreDto })
   @ApiResponse({ status: 201, description: 'Loja criada com sucesso' })
@@ -60,6 +68,7 @@ export class StoreController {
   }
 
   @Put(':subdomain')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Atualiza informações de uma loja' })
   @ApiParam({ name: 'subdomain', type: String, description: 'Subdomínio da loja' })
   @ApiBody({ type: UpdateStoreDto })
@@ -81,6 +90,7 @@ export class StoreController {
   }
 
   @Delete(':subdomain')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Remove uma loja pelo subdomínio' })
   @ApiParam({ name: 'subdomain', type: String, description: 'Subdomínio da loja' })
   @ApiResponse({ status: 200, description: 'Loja removida com sucesso' })

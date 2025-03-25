@@ -11,27 +11,37 @@ import {
   ValidationPipe,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiParam,
+  ApiBody,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { StockService } from './stock.service';
 import { Stock } from './stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('Stock')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('stock')
 export class StockController {
   constructor(private readonly stockService: StockService) {}
 
   @Get(':productId/:storeId')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Obter o estoque de um produto em uma loja específica' })
   @ApiParam({ name: 'productId', type: Number, description: 'ID do produto' })
-  @ApiParam({ name: 'storeId', type: Number, description: 'ID da loja (antes era restaurantId)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Retorna o estoque do produto nessa loja',
-    type: Stock,
-  })
+  @ApiParam({ name: 'storeId', type: Number, description: 'ID da loja' })
+  @ApiResponse({ status: 200, description: 'Estoque retornado', type: Stock })
   async getStock(
     @Param('productId', ParseIntPipe) productId: number,
     @Param('storeId', ParseIntPipe) storeId: number,
@@ -51,25 +61,18 @@ export class StockController {
   }
 
   @Get()
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Lista todos os estoques' })
-  @ApiResponse({
-    status: 200,
-    description: 'Retorna a lista de todos os registros de estoque',
-    type: Stock,
-    isArray: true,
-  })
+  @ApiResponse({ status: 200, description: 'Lista de estoques', type: [Stock] })
   async findAll(): Promise<Stock[]> {
     return this.stockService.findAll();
   }
 
   @Post()
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Cria um novo registro de estoque' })
   @ApiBody({ type: CreateStockDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Estoque criado com sucesso',
-    type: Stock,
-  })
+  @ApiResponse({ status: 201, description: 'Estoque criado com sucesso', type: Stock })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async createStock(@Body() createStockDto: CreateStockDto): Promise<Stock> {
     try {
@@ -87,15 +90,12 @@ export class StockController {
   }
 
   @Put(':productId/:storeId')
-  @ApiOperation({ summary: 'Atualiza a quantidade de estoque de um produto em uma loja' })
-  @ApiParam({ name: 'productId', type: Number, description: 'ID do produto' })
-  @ApiParam({ name: 'storeId', type: Number, description: 'ID da loja (antes era restaurantId)' })
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Atualiza a quantidade de estoque' })
+  @ApiParam({ name: 'productId', type: Number })
+  @ApiParam({ name: 'storeId', type: Number })
   @ApiBody({ type: UpdateStockDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Estoque atualizado com sucesso',
-    type: Stock,
-  })
+  @ApiResponse({ status: 200, description: 'Estoque atualizado com sucesso', type: Stock })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async updateStock(
     @Param('productId', ParseIntPipe) productId: number,
@@ -117,13 +117,11 @@ export class StockController {
   }
 
   @Delete(':productId/:storeId')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Remove o estoque de um produto em uma loja' })
-  @ApiParam({ name: 'productId', type: Number, description: 'ID do produto' })
-  @ApiParam({ name: 'storeId', type: Number, description: 'ID da loja (antes era restaurantId)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Estoque removido com sucesso',
-  })
+  @ApiParam({ name: 'productId', type: Number })
+  @ApiParam({ name: 'storeId', type: Number })
+  @ApiResponse({ status: 200, description: 'Estoque removido com sucesso' })
   async removeStock(
     @Param('productId', ParseIntPipe) productId: number,
     @Param('storeId', ParseIntPipe) storeId: number,

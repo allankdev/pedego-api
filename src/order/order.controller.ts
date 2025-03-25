@@ -20,6 +20,8 @@ import { Order } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -31,93 +33,67 @@ import {
 @ApiTags('Orders')
 @ApiBearerAuth('access-token')
 @Controller('orders')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo pedido (CUSTOMER ou ADMIN)' })
   @ApiBody({ type: CreateOrderDto })
+  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createOrder(
     @Body() orderData: CreateOrderDto,
     @Req() req: Request,
   ): Promise<Order> {
-    try {
-      const user = req.user as any;
-      return await this.orderService.createOrder({
-        ...orderData,
-        userId: user.id,
-      });
-    } catch (error) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: 'Erro ao criar pedido',
-          message: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const user = req.user as any;
+    return await this.orderService.createOrder({
+      ...orderData,
+      userId: user.id,
+    });
   }
 
   @Get()
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Lista todos os pedidos (somente ADMIN)' })
-  async findAll(@Req() req: Request): Promise<Order[]> {
-    const user = req.user as any;
-    if (user.role !== 'ADMIN') {
-      throw new HttpException('Acesso negado', HttpStatus.FORBIDDEN);
-    }
+  @ApiResponse({ status: 200, description: 'Lista de pedidos retornada com sucesso' })
+  async findAll(): Promise<Order[]> {
     return this.orderService.findAll();
   }
 
   @Get('me')
+  @Roles('CUSTOMER', 'ADMIN')
   @ApiOperation({ summary: 'Lista os pedidos do usuário autenticado' })
+  @ApiResponse({ status: 200, description: 'Lista de pedidos do usuário' })
   async findMyOrders(@Req() req: Request): Promise<Order[]> {
     const user = req.user as any;
     return await this.orderService.findByUserId(user.id);
   }
 
   @Put(':id')
+  @Roles('CUSTOMER', 'ADMIN')
   @ApiOperation({ summary: 'Atualiza um pedido' })
   @ApiBody({ type: UpdateOrderDto })
+  @ApiResponse({ status: 200, description: 'Pedido atualizado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Erro ao atualizar pedido' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async updateOrder(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateOrderDto: UpdateOrderDto,
   ): Promise<Order> {
-    try {
-      return await this.orderService.updateOrder(id, updateOrderDto);
-    } catch (error) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: 'Erro ao atualizar pedido',
-          message: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    return await this.orderService.updateOrder(id, updateOrderDto);
   }
 
   @Delete(':id')
+  @Roles('CUSTOMER', 'ADMIN')
   @ApiOperation({ summary: 'Remove um pedido (usuário ou admin)' })
+  @ApiResponse({ status: 200, description: 'Pedido removido com sucesso' })
+  @ApiResponse({ status: 400, description: 'Erro ao deletar pedido' })
   async removeOrder(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ): Promise<void> {
-    try {
-      const user = req.user as any;
-      await this.orderService.removeOrder(id, user);
-    } catch (error) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: 'Erro ao deletar pedido',
-          message: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const user = req.user as any;
+    await this.orderService.removeOrder(id, user);
   }
 }

@@ -9,5 +9,6 @@ import { Store } from './store.entity';
   imports: [TypeOrmModule.forFeature([Store])],
   controllers: [StoreController],
   providers: [StoreService],
+  exports: [StoreService], // ✅ Exporta o serviço para uso externo (AuthModule)
 })
 export class StoreModule {}
