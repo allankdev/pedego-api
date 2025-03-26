@@ -23,21 +23,25 @@ export class OrderService {
     private userRepository: Repository<User>,
   ) {}
 
-  // Cria um novo pedido
-  async createOrder(createOrderDto: Omit<CreateOrderDto, 'userId'> & { userId: number }): Promise<Order> {
-    const user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
-
-    if (!user) {
-      throw new HttpException('Usuário não encontrado', HttpStatus.BAD_REQUEST);
+  // Cria um novo pedido, com ou sem userId
+  async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
+    let user: User | null = null;
+  
+    if (createOrderDto.userId) {
+      user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
+      if (!user) {
+        throw new NotFoundException('Usuário não encontrado');
+      }
     }
-
+  
     const order = this.orderRepository.create({
       ...createOrderDto,
-      user,
+      user: user || null,
     });
-
+  
     return await this.orderRepository.save(order);
   }
+  
 
   // Lista todos os pedidos com relações
   async findAll(): Promise<Order[]> {
@@ -74,7 +78,7 @@ export class OrderService {
     const order = await this.findOne(id);
 
     const isAdmin = user.role === 'ADMIN';
-    const isOwner = order.user.id === user.id;
+    const isOwner = order.user?.id === user.id;
 
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException('Você não pode deletar este pedido.');
@@ -87,7 +91,7 @@ export class OrderService {
     await this.orderRepository.remove(order);
   }
 
-  // Busca todos os pedidos de um usuário específico (CUSTOMER)
+  // Busca todos os pedidos de um usuário específico
   async findByUserId(userId: number): Promise<Order[]> {
     return await this.orderRepository.find({
       where: { user: { id: userId } },

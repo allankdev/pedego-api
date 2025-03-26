@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Order } from '../order/order.entity';
-import { UserRole } from './enums/user-role.enum'; // ✅ Novo local do enum
+import { Coupon } from '../coupon/coupon.entity'; // ← Importa o Cupom
+import { UserRole } from './enums/user-role.enum';
 
 @Entity()
 export class User {
@@ -25,4 +26,8 @@ export class User {
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
+
+  // 🔥 Relação com os cupons criados pela loja (ADMIN)
+  @OneToMany(() => Coupon, (coupon) => coupon.createdBy)
+  coupons: Coupon[];
 }

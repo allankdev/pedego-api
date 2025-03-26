@@ -11,8 +11,6 @@ import {
   UsePipes,
   ValidationPipe,
   UseGuards,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -28,6 +26,7 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { Public } from '../auth/public.decorator'; // 👈 novo
 
 @ApiTags('Stores')
 @ApiBearerAuth('access-token')
@@ -41,7 +40,6 @@ export class StoreController {
   @ApiOperation({ summary: 'Cria uma nova loja' })
   @ApiBody({ type: CreateStoreDto })
   @ApiResponse({ status: 201, description: 'Loja criada com sucesso' })
-  @ApiResponse({ status: 400, description: 'Erro ao criar a loja' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async createStore(@Body() createStoreDto: CreateStoreDto) {
     try {
@@ -52,6 +50,7 @@ export class StoreController {
   }
 
   @Get(':subdomain')
+  @Public() // 👈 LIBERADO para acesso público
   @ApiOperation({ summary: 'Busca loja pelo subdomínio' })
   @ApiParam({ name: 'subdomain', type: String, description: 'Subdomínio da loja' })
   @ApiResponse({ status: 200, description: 'Loja encontrada' })

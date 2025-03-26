@@ -12,6 +12,7 @@ import {
 import { User } from '../user/user.entity';
 import { Delivery } from '../delivery/delivery.entity';
 import { Payment } from '../payment/payment.entity';
+import { OrderItem } from './order-item.entity';
 
 export enum OrderStatus {
   PENDENTE = 'pendente',
@@ -26,10 +27,22 @@ export class Order {
   id: number;
 
   @Column()
-  product: string;
+  customerName: string;
 
-  @Column('decimal')
-  price: number;
+  @Column()
+  customerEmail: string;
+
+  @Column()
+  customerPhone: string;
+
+  @Column()
+  customerAddress: string;
+
+  @Column({ type: 'enum', enum: ['entrega', 'retirada'] })
+  deliveryType: 'entrega' | 'retirada';
+
+  @Column({ type: 'enum', enum: ['pix', 'dinheiro', 'cartao'] })
+  paymentMethod: 'pix' | 'dinheiro' | 'cartao';
 
   @Column({
     type: 'enum',
@@ -38,14 +51,17 @@ export class Order {
   })
   status: OrderStatus;
 
-  @ManyToOne(() => User, (user) => user.orders)
+  @ManyToOne(() => User, (user) => user.orders, { nullable: true })
   user: User;
+
+  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
+  items: OrderItem[];
 
   @OneToMany(() => Delivery, (delivery) => delivery.order)
   deliveries: Delivery[];
 
   @OneToOne(() => Payment, (payment) => payment.order, { cascade: true })
-  @JoinColumn() // <- Adiciona a FK do pagamento aqui
+  @JoinColumn()
   payment: Payment;
 
   @CreateDateColumn()

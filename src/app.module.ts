@@ -14,6 +14,7 @@ import { PaymentModule } from './payment/payment.module';
 import { GeolocationModule } from './geolocation/geolocation.module';
 import { NotificationModule } from './notification/notification.module';
 import { StockModule } from './stock/stock.module';
+import { CouponModule } from './coupon/coupon.module'; // ✅ ADICIONADO
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { StockModule } from './stock/stock.module';
     GeolocationModule,
     NotificationModule,
     StockModule,
+    CouponModule, // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],
   providers: [AppService],
