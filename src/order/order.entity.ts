@@ -30,12 +30,9 @@ export class Order {
   customerName: string;
 
   @Column()
-  customerEmail: string;
-
-  @Column()
   customerPhone: string;
 
-  @Column()
+  @Column({ nullable: true })
   customerAddress: string;
 
   @Column({ type: 'enum', enum: ['entrega', 'retirada'] })
@@ -43,6 +40,9 @@ export class Order {
 
   @Column({ type: 'enum', enum: ['pix', 'dinheiro', 'cartao'] })
   paymentMethod: 'pix' | 'dinheiro' | 'cartao';
+
+  @Column({ nullable: true })
+  observations?: string; // ✅ Novo campo para observações
 
   @Column({
     type: 'enum',

@@ -31,15 +31,14 @@ import { Roles } from '../auth/roles.decorator';
 import { Request } from 'express';
 import { UserRole } from './enums/user-role.enum';
 
+@Controller('users')
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
-@Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cria um novo usuário (registro manual)' })
+  @ApiOperation({ summary: 'Cria um novo usuário (registro automático pelo telefone)' })
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 201, description: 'Usuário criado com sucesso', type: User })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
@@ -48,17 +47,28 @@ export class UserController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Lista todos os usuários' })
   @ApiResponse({ status: 200, description: 'Lista de usuários', type: [User] })
-  async findAll() {
+  async findAll(@Req() req: Request) {
+    const user = req.user as any;
+    // Certifique-se de que o `req.user` contém a role e id corretamente
+    console.log(user);  // Adicione um log para verificar o conteúdo de `req.user`
+  
     return this.userService.findAll();
+  }
+  
+  @Get('phone/:phone')
+  @ApiOperation({ summary: 'Busca um usuário pelo telefone (público)' })
+  @ApiResponse({ status: 200, description: 'Usuário encontrado' })
+  async findByPhone(@Param('phone') phone: string) {
+    return this.userService.findByPhone(phone);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Busca um usuário pelo ID' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, description: 'Usuário encontrado', type: User })
   async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const user = req.user as any;
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
@@ -68,16 +78,9 @@ export class UserController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Atualiza um usuário' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiBody({ type: UpdateUserDto })
-  @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso', type: User })
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateUserDto: UpdateUserDto,
-    @Req() req: Request,
-  ) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto, @Req() req: Request) {
     const user = req.user as any;
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
       throw new ForbiddenException('Acesso negado');
@@ -86,10 +89,9 @@ export class UserController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Remove um usuário' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, description: 'Usuário removido com sucesso' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     return await this.userService.remove(id);
   }

@@ -31,10 +31,6 @@ export class UpdateOrderDto {
   @IsString()
   customerName?: string;
 
-  @ApiProperty({ example: 'joao@email.com', required: false })
-  @IsOptional()
-  @IsEmail()
-  customerEmail?: string;
 
   @ApiProperty({ example: '+55 11999999999', required: false })
   @IsOptional()

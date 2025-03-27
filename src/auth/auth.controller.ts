@@ -7,7 +7,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterStoreDto } from './dtos/register-store.dto';
 import {
@@ -21,24 +20,6 @@ import {
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Post('register')
-  @ApiOperation({ summary: 'Registro de novo usuário (CUSTOMER)' })
-  @ApiBody({ type: RegisterDto })
-  @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Erro ao registrar usuário' })
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  async register(@Body() registerDto: RegisterDto) {
-    try {
-      return await this.authService.register(
-        registerDto.name,
-        registerDto.email,
-        registerDto.password,
-      );
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-  }
 
   @Post('register-as-store')
   @ApiOperation({ summary: 'Registro de loja com 30 dias grátis (ADMIN)' })
@@ -59,7 +40,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
   @ApiResponse({ status: 400, description: 'Credenciais inválidas' })
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async login(@Body() loginDto: LoginDto) {
     try {
       return await this.authService.login(loginDto.email, loginDto.password);

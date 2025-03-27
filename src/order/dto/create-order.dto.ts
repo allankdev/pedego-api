@@ -6,7 +6,6 @@ import {
   IsArray,
   IsEmail,
   ValidateNested,
-  IsPhoneNumber,
   IsNumber,
   Min,
 } from 'class-validator';
@@ -31,10 +30,6 @@ export class CreateOrderDto {
   @IsNotEmpty()
   customerName: string;
 
-  @ApiProperty({ example: 'joao@email.com' })
-  @IsEmail()
-  customerEmail: string;
-
   @ApiProperty({ example: '+55 11999999999' })
   @IsString()
   @IsNotEmpty()
@@ -42,7 +37,7 @@ export class CreateOrderDto {
 
   @ApiProperty({ example: 'Rua Exemplo, 123 - Bairro Legal' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   customerAddress: string;
 
   @ApiProperty({
@@ -58,6 +53,15 @@ export class CreateOrderDto {
   })
   @IsEnum(['pix', 'dinheiro', 'cartao'])
   paymentMethod: 'pix' | 'dinheiro' | 'cartao';
+
+  @ApiProperty({
+    example: 'Sem cebola, tocar campainha',
+    required: false,
+    description: 'Observações adicionais do pedido',
+  })
+  @IsOptional()
+  @IsString()
+  observations?: string;
 
   @ApiProperty({
     type: [OrderItemDto],

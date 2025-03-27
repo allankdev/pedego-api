@@ -11,10 +11,19 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  // Criar um novo usuário
+  // Cria ou retorna usuário existente com base no telefone (para clientes)
   async create(userData: Partial<User>): Promise<User> {
-    const user = this.userRepository.create(userData);
-    return await this.userRepository.save(user);
+    // Se o telefone for fornecido, verifica se já existe um usuário com esse telefone
+    if (userData.phone) {
+      const existingUser = await this.userRepository.findOne({
+        where: { phone: userData.phone },
+      });
+
+      if (existingUser) return existingUser;
+    }
+
+    const newUser = this.userRepository.create(userData);
+    return await this.userRepository.save(newUser);
   }
 
   // Buscar usuário por ID
@@ -26,9 +35,13 @@ export class UserService {
     return user;
   }
 
-  // Buscar usuário por e-mail
-  async findByEmail(email: string): Promise<User | undefined> {
-    return this.userRepository.findOne({ where: { email } });
+  // Buscar usuário por telefone (para checkout, clientes)
+  async findByPhone(phone: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { phone } });
+    if (!user) {
+      throw new NotFoundException(`Usuário com telefone ${phone} não encontrado`);
+    }
+    return user;
   }
 
   // Buscar todos os usuários
@@ -47,5 +60,10 @@ export class UserService {
   async remove(id: number): Promise<void> {
     const user = await this.findById(id);
     await this.userRepository.remove(user);
+  }
+
+  // Buscar usuário por e-mail (apenas para ADMIN, lojas)
+  async findByEmail(email: string): Promise<User | undefined> {
+    return this.userRepository.findOne({ where: { email } });
   }
 }

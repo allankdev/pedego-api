@@ -21,33 +21,16 @@ export class AuthService {
     private readonly subscriptionService: SubscriptionService,
   ) {}
 
-  // Registro normal de usuário (CUSTOMER)
-  async register(name: string, email: string, password: string) {
-    const hashedPassword = await argon2.hash(password);
-
-    const user = await this.userService.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: UserRole.CUSTOMER,
-    });
-
-    const savedUser = await this.userService.findByEmail(email);
-
-    if (hashedPassword !== savedUser.password) {
-      throw new ConflictException('Erro ao salvar a senha no banco de dados');
-    }
-
-    return {
-      message: 'Usuário registrado com sucesso',
-      user,
-    };
-  }
-
   // Registro como loja (recebe role ADMIN + trial de 30 dias)
   async registerAsStore(dto: RegisterStoreDto) {
-    const hashedPassword = await argon2.hash(dto.password);
+    // 🔐 Verifica se o e-mail já está em uso, considerando apenas lojas (admin)
+    const existingUser = await this.userService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('E-mail já está em uso');
+    }
 
+    // Cria o usuário com senha criptografada
+    const hashedPassword = await argon2.hash(dto.password);
     const user = await this.userService.create({
       name: dto.name,
       email: dto.email,
@@ -55,13 +38,15 @@ export class AuthService {
       role: UserRole.ADMIN,
     });
 
+    // Cria a loja vinculada ao admin
     const store = await this.storeService.create({
       name: dto.storeName,
       description: dto.description,
       subdomain: dto.subdomain,
     });
 
-    await this.subscriptionService.createTrial(user.id); // 30 dias grátis
+    // Cria assinatura trial de 30 dias
+    await this.subscriptionService.createTrial(user.id);
 
     return {
       message: 'Loja criada com 30 dias de teste grátis!',
@@ -70,23 +55,28 @@ export class AuthService {
     };
   }
 
-  // Login do usuário
+  // Login do usuário ADMIN
   async login(email: string, password: string) {
+    // Busca o usuário pelo email
     const user = await this.userService.findByEmail(email);
-    if (!user) {
+
+    if (!user || !user.password) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
+    // Verifica se a senha está correta
     const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
+    // Gera o payload para o JWT
     const payload = {
       sub: user.id,
       role: user.role,
     };
 
+    // Gera o token de autenticação
     const access_token = this.jwtService.sign(payload);
 
     return {

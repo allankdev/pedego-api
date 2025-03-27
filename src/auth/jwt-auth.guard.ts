@@ -21,8 +21,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     try {
-      // Caso contrário, chama a implementação padrão do AuthGuard('jwt')
+      // Chama a implementação padrão do AuthGuard('jwt')
       const result = await super.canActivate(context);
+
+      // Verifique o conteúdo de req.user aqui para depuração
+      const user = context.switchToHttp().getRequest().user;
+      console.log('USER (JwtAuthGuard):', user);  // Verifique se o user está sendo preenchido corretamente
+
       return result instanceof Promise ? result : Promise.resolve(result);
     } catch (error) {
       throw new UnauthorizedException('Usuário não autenticado ou sessão expirada');

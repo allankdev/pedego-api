@@ -1,7 +1,5 @@
 import {
   Injectable,
-  HttpException,
-  HttpStatus,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
@@ -12,6 +10,8 @@ import { Order } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { User } from '../user/user.entity';
+import { OrderItem } from './order-item.entity';
+import { Product } from '../product/product.entity';
 
 @Injectable()
 export class OrderService {
@@ -21,62 +21,76 @@ export class OrderService {
 
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
+    @InjectRepository(OrderItem)
+    private orderItemRepository: Repository<OrderItem>,
+
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
-  // Cria um novo pedido, com ou sem userId
   async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
+    const { items, ...orderData } = createOrderDto;
+
     let user: User | null = null;
-  
     if (createOrderDto.userId) {
       user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
-      if (!user) {
-        throw new NotFoundException('Usuário não encontrado');
-      }
+      if (!user) throw new NotFoundException('Usuário não encontrado');
     }
-  
+
     const order = this.orderRepository.create({
-      ...createOrderDto,
+      ...orderData,
       user: user || null,
     });
-  
-    return await this.orderRepository.save(order);
-  }
-  
 
-  // Lista todos os pedidos com relações
-  async findAll(): Promise<Order[]> {
+    await this.orderRepository.save(order);
+
+    // Criar e associar os itens
+    const orderItems: OrderItem[] = [];
+    for (const item of items) {
+      const product = await this.productRepository.findOne({ where: { id: item.productId } });
+      if (!product) throw new NotFoundException(`Produto ${item.productId} não encontrado`);
+
+      const orderItem = this.orderItemRepository.create({
+        product,
+        quantity: item.quantity,
+        order,
+      });
+
+      orderItems.push(orderItem);
+    }
+
+    await this.orderItemRepository.save(orderItems);
+
+    return this.findOne(order.id); // já retorna com os relacionamentos
+  }
+
+  async findAll(user: { id: number; role: string }): Promise<Order[]> {
+    const where = user.role === 'ADMIN' ? {} : { user: { id: user.id } };
     return await this.orderRepository.find({
-      relations: ['user', 'payment', 'deliveries'],
+      where,
+      relations: ['user', 'payment', 'deliveries', 'items', 'items.product'],
     });
   }
 
-  // Busca um pedido específico por ID
   async findOne(id: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['user', 'payment', 'deliveries'],
+      relations: ['user', 'payment', 'deliveries', 'items', 'items.product'],
     });
 
-    if (!order) {
-      throw new NotFoundException('Pedido não encontrado');
-    }
-
+    if (!order) throw new NotFoundException('Pedido não encontrado');
     return order;
   }
 
-  // Atualiza um pedido
   async updateOrder(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
-
     Object.assign(order, updateOrderDto);
-
     return await this.orderRepository.save(order);
   }
 
-  // Remove (ou cancela) um pedido com validação de acesso
   async removeOrder(id: number, user: { id: number; role: string }): Promise<void> {
     const order = await this.findOne(id);
-
     const isAdmin = user.role === 'ADMIN';
     const isOwner = order.user?.id === user.id;
 
@@ -91,11 +105,10 @@ export class OrderService {
     await this.orderRepository.remove(order);
   }
 
-  // Busca todos os pedidos de um usuário específico
   async findByUserId(userId: number): Promise<Order[]> {
     return await this.orderRepository.find({
       where: { user: { id: userId } },
-      relations: ['user', 'payment', 'deliveries'],
+      relations: ['user', 'payment', 'deliveries', 'items', 'items.product'],
     });
   }
 }
