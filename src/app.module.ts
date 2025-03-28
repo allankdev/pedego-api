@@ -15,6 +15,12 @@ import { GeolocationModule } from './geolocation/geolocation.module';
 import { NotificationModule } from './notification/notification.module';
 import { StockModule } from './stock/stock.module';
 import { CouponModule } from './coupon/coupon.module'; // ✅ ADICIONADO
+import { SubscriptionModule } from './subscription/subscription.module';
+import { NeighborhoodModule } from './neighborhood/neighborhood.module';
+import { CategoryModule } from './category/category.module';
+import { OpeningHourModule } from './opening-hour/opening-hour.module';
+
+
 
 @Module({
   imports: [
@@ -40,7 +46,12 @@ import { CouponModule } from './coupon/coupon.module'; // ✅ ADICIONADO
     GeolocationModule,
     NotificationModule,
     StockModule,
-    CouponModule, // ✅ ADICIONADO AQUI
+    CouponModule,
+    SubscriptionModule,
+    NeighborhoodModule,
+    CategoryModule,
+    OpeningHourModule,
+     // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],
   providers: [AppService],

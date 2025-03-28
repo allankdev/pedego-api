@@ -1,10 +1,12 @@
+// src/product/product.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne
+  ManyToOne,
 } from 'typeorm';
 import { Store } from '../store/store.entity';
+import { Category } from '../category/category.entity';
 
 @Entity()
 export class Product {
@@ -23,7 +25,12 @@ export class Product {
   @Column({ default: true })
   available: boolean;
 
-  // Relacionamento: vários produtos pertencem a uma loja
   @ManyToOne(() => Store, (store) => store.products, { onDelete: 'CASCADE' })
   store: Store;
+
+  @ManyToOne(() => Category, (category) => category.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  category: Category;
 }

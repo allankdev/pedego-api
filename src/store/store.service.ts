@@ -1,7 +1,9 @@
+// src/store/store.service.ts
 import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,14 +18,11 @@ export class StoreService {
     private readonly storeRepository: Repository<Store>,
   ) {}
 
-  // (Opcional) Retorna todas as lojas
   async findAll(): Promise<Store[]> {
     return this.storeRepository.find();
   }
 
-  // Cria uma nova loja
   async create(createStoreDto: CreateStoreDto): Promise<Store> {
-    // Verifica se o subdomínio já existe
     const existingStore = await this.storeRepository.findOne({
       where: { subdomain: createStoreDto.subdomain },
     });
@@ -38,7 +37,6 @@ export class StoreService {
     return this.storeRepository.save(newStore);
   }
 
-  // Busca loja pelo subdomínio
   async findBySubdomain(subdomain: string): Promise<Store> {
     const store = await this.storeRepository.findOne({ where: { subdomain } });
 
@@ -49,15 +47,21 @@ export class StoreService {
     return store;
   }
 
-  // Atualiza informações de uma loja via subdomínio
-  async update(subdomain: string, updateStoreDto: UpdateStoreDto): Promise<Store> {
+  async update(
+    subdomain: string,
+    updateStoreDto: UpdateStoreDto,
+    user: { role: string; store?: { subdomain: string } },
+  ): Promise<Store> {
     const store = await this.storeRepository.findOne({ where: { subdomain } });
 
     if (!store) {
       throw new NotFoundException(`Loja '${subdomain}' não encontrada para atualização.`);
     }
 
-    // Se for alterar o subdomínio, checar se já existe igual
+    if (user.role !== 'ADMIN' || user.store?.subdomain !== subdomain) {
+      throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
+    }
+
     if (
       updateStoreDto.subdomain &&
       updateStoreDto.subdomain !== store.subdomain
@@ -76,7 +80,21 @@ export class StoreService {
     return this.storeRepository.save(store);
   }
 
-  // Remove uma loja via subdomínio
+  async toggleOpen(subdomain: string, user: { role: string; store?: { subdomain: string } }): Promise<Store> {
+    const store = await this.storeRepository.findOne({ where: { subdomain } });
+
+    if (!store) {
+      throw new NotFoundException(`Loja '${subdomain}' não encontrada.`);
+    }
+
+    if (user.role !== 'ADMIN' || user.store?.subdomain !== subdomain) {
+      throw new ForbiddenException('Você não tem permissão para alterar o status desta loja.');
+    }
+
+    store.isOpen = !store.isOpen;
+    return this.storeRepository.save(store);
+  }
+
   async remove(subdomain: string): Promise<void> {
     const store = await this.storeRepository.findOne({ where: { subdomain } });
 
