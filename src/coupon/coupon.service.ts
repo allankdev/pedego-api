@@ -1,34 +1,72 @@
-// src/coupon/coupon.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable } from '@nestjs/common';
 import { Coupon } from './coupon.entity';
 import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCouponDto } from './dto/create-coupon.dto';
-import { User } from '../user/user.entity';
+import { UpdateCouponDto } from './dto/update-coupon.dto';
 
 @Injectable()
 export class CouponService {
   constructor(
     @InjectRepository(Coupon)
-    private couponRepo: Repository<Coupon>,
+    private readonly couponRepository: Repository<Coupon>,
   ) {}
 
-  async create(dto: CreateCouponDto, user: User) {
-    const existing = await this.couponRepo.findOne({ where: { code: dto.code } });
-    if (existing) throw new BadRequestException('Código já existe');
-
-    const coupon = this.couponRepo.create({ ...dto, createdBy: user });
-    return this.couponRepo.save(coupon);
+  // Criação de um novo cupom
+  async create(dto: CreateCouponDto, user: any): Promise<Coupon> {
+    const coupon = this.couponRepository.create(dto);
+    return this.couponRepository.save(coupon);
   }
 
-  async validate(code: string) {
-    const coupon = await this.couponRepo.findOne({ where: { code, active: true } });
-    if (!coupon) throw new NotFoundException('Cupom inválido');
+  // Validação de um cupom
+  async validate(code: string): Promise<any> {
+    const coupon = await this.couponRepository.findOne({ where: { code } });
+    if (!coupon || new Date(coupon.expiresAt) < new Date()) {
+      return { valid: false };
+    }
+    return {
+      code: coupon.code,
+      discountPercentage: coupon.discount,
+      valid: true,
+      expiresAt: coupon.expiresAt,
+    };
+  }
 
-    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-      throw new BadRequestException('Cupom expirado');
+  // Listar todos os cupons
+  async findAll(): Promise<Coupon[]> {
+    return this.couponRepository.find();
+  }
+
+  // Atualizar um cupom existente
+  async update(id: string, dto: UpdateCouponDto, user: any): Promise<Coupon> {
+    // Convertendo id para número
+    const couponId = Number(id);
+
+    const coupon = await this.couponRepository.findOne({
+      where: { id: couponId }, // Agora estamos passando o id como número
+    });
+
+    if (!coupon) {
+      throw new Error('Cupom não encontrado');
     }
 
-    return coupon;
+    Object.assign(coupon, dto);
+    return this.couponRepository.save(coupon);
+  }
+
+  // Excluir um cupom
+  async remove(id: string): Promise<void> {
+    // Convertendo id para número
+    const couponId = Number(id);
+
+    const coupon = await this.couponRepository.findOne({
+      where: { id: couponId }, // Agora estamos passando o id como número
+    });
+
+    if (!coupon) {
+      throw new Error('Cupom não encontrado');
+    }
+
+    await this.couponRepository.remove(coupon);
   }
 }
