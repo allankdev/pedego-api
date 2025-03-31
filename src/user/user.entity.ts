@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
 import { Coupon } from '../coupon/coupon.entity';
 import { UserRole } from './enums/user-role.enum';
+import { Store } from '../store/store.entity';
 
 @Entity()
 export class User {
@@ -12,24 +13,27 @@ export class User {
   name: string;
 
   @Column({ nullable: true, unique: true })
-  phone?: string;  // O telefone é obrigatório para clientes
+  phone?: string;
 
   @Column({ nullable: true, unique: true })
-  email?: string;  // O email é opcional, mas necessário para ADMIN (lojas)
+  email?: string;
 
   @Column({ nullable: true })
-  password?: string;  // A senha é opcional, mas necessária para ADMIN (lojas)
+  password?: string;
 
   @Column({
     type: 'enum',
     enum: UserRole,
     default: UserRole.CUSTOMER,
   })
-  role: UserRole;  // O papel do usuário, podendo ser CUSTOMER ou ADMIN
+  role: UserRole;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
 
   @OneToMany(() => Coupon, (coupon) => coupon.createdBy)
   coupons: Coupon[];
+
+  @ManyToOne(() => Store, (store) => store.users, { nullable: true })
+  store: Store;
 }

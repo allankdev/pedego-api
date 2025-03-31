@@ -5,16 +5,22 @@ import {
   UsePipes,
   ValidationPipe,
   BadRequestException,
+  Get,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterStoreDto } from './dtos/register-store.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import {
   ApiTags,
   ApiOperation,
   ApiBody,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -46,6 +52,28 @@ export class AuthController {
       return await this.authService.login(loginDto.email, loginDto.password);
     } catch (error) {
       throw new BadRequestException(error.message);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  @ApiOperation({ summary: 'Retorna o usuário autenticado com a loja (se ADMIN)' })
+  @ApiBearerAuth()
+  async getProfile(@Req() req: Request) {
+    const user = req.user as any;
+    
+    // Retorna o usuário com as informações da loja, se presente
+    try {
+      const validatedUser = await this.authService.validateUserById(user.sub);
+      if (validatedUser.store) {
+        return {
+          user: validatedUser,
+          store: validatedUser.store,  // Incluir as informações da loja
+        };
+      }
+      return validatedUser;  // Se não houver loja associada ao usuário, retorna só os dados do usuário
+    } catch (error) {
+      throw new BadRequestException('Erro ao obter perfil do usuário');
     }
   }
 }

@@ -66,16 +66,20 @@ export class UserController {
     return this.userService.findByPhone(phone);
   }
 
-  @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Busca um usuário pelo ID' })
-  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    const user = req.user as any;
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
-      throw new ForbiddenException('Acesso negado');
-    }
-    return this.userService.findById(id);
+// user.controller.ts
+@Get(':id')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiOperation({ summary: 'Busca um usuário pelo ID' })
+async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+  const user = req.user as any;
+
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
+    throw new ForbiddenException('Acesso negado');
   }
+
+  return this.userService.findByIdWithStore(id);
+}
+
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

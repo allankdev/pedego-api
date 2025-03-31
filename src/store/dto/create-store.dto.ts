@@ -1,4 +1,3 @@
-// src/store/dto/create-store.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
@@ -49,6 +48,7 @@ export class CreateStoreDto {
   country?: string;
 
   @ApiProperty({
+    
     example: 'entrega',
     enum: ['entrega', 'retirada', 'ambos'],
     required: false,
@@ -82,6 +82,7 @@ export class CreateStoreDto {
   @IsString()
   printPaperSize?: string;
 
+  @IsOptional()
   @ApiProperty({
     example: ['pix', 'dinheiro', 'cartão de crédito'],
     description: 'Formas de pagamento aceitas',
@@ -90,7 +91,7 @@ export class CreateStoreDto {
   })
   @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
+  @ArrayNotEmpty()  // Garante que o array de formas de pagamento não esteja vazio
   @IsString({ each: true })
   paymentMethods?: string[];
 }

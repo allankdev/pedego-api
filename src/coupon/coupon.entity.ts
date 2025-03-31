@@ -1,6 +1,8 @@
 // src/coupon/coupon.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { User } from '../user/user.entity';
+import { Store } from '../store/store.entity';
+
 
 @Entity()
 export class Coupon {
@@ -21,4 +23,7 @@ export class Coupon {
 
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date;
+
+  @ManyToOne(() => Store)
+store: Store;
 }

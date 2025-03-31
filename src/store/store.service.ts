@@ -1,4 +1,3 @@
-// src/store/store.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -58,25 +57,19 @@ export class StoreService {
       throw new NotFoundException(`Loja '${subdomain}' não encontrada para atualização.`);
     }
 
+    // Verifica se o usuário tem permissão para atualizar a loja
     if (user.role !== 'ADMIN' || user.store?.subdomain !== subdomain) {
       throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
     }
 
-    if (
-      updateStoreDto.subdomain &&
-      updateStoreDto.subdomain !== store.subdomain
-    ) {
-      const existing = await this.storeRepository.findOne({
-        where: { subdomain: updateStoreDto.subdomain },
-      });
-      if (existing) {
-        throw new ConflictException(
-          `O subdomínio '${updateStoreDto.subdomain}' já está em uso.`,
-        );
-      }
+    // Atualiza as formas de pagamento se presentes
+    if (updateStoreDto.paymentMethods) {
+      store.paymentMethods = updateStoreDto.paymentMethods;
     }
 
+    // Atualiza outras propriedades da loja
     Object.assign(store, updateStoreDto);
+
     return this.storeRepository.save(store);
   }
 

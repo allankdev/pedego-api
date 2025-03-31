@@ -66,4 +66,31 @@ export class UserService {
   async findByEmail(email: string): Promise<User | undefined> {
     return this.userRepository.findOne({ where: { email } });
   }
+
+  // user.service.ts
+  async findByIdWithStore(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['store'],
+    });
+  
+    if (!user) {
+      throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
+    }
+  
+    return user;
+  }
+
+  async findByEmailWithStore(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+      relations: ['store'], // Carrega a loja junto
+    });
+
+  }
+  async save(user: User): Promise<User> {
+    return await this.userRepository.save(user);
+  }
+    
+
 }

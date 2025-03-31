@@ -24,12 +24,20 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       // Chama a implementação padrão do AuthGuard('jwt')
       const result = await super.canActivate(context);
 
-      // Verifique o conteúdo de req.user aqui para depuração
+      // Obtém o usuário do contexto da requisição
       const user = context.switchToHttp().getRequest().user;
-      console.log('USER (JwtAuthGuard):', user);  // Verifique se o user está sendo preenchido corretamente
+
+      // Aqui você pode verificar se a loja existe no usuário
+      if (!user.store) {
+        throw new UnauthorizedException('Loja não associada ao usuário');
+      }
+
+      // Verifique o conteúdo de req.user para depuração
+      console.log('USER (JwtAuthGuard):', user); // Verifique se o user está sendo preenchido corretamente
 
       return result instanceof Promise ? result : Promise.resolve(result);
     } catch (error) {
+      console.error('Erro de autenticação:', error);
       throw new UnauthorizedException('Usuário não autenticado ou sessão expirada');
     }
   }

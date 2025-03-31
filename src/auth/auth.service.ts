@@ -23,13 +23,11 @@ export class AuthService {
 
   // Registro como loja (recebe role ADMIN + trial de 30 dias)
   async registerAsStore(dto: RegisterStoreDto) {
-    // 🔐 Verifica se o e-mail já está em uso, considerando apenas lojas (admin)
     const existingUser = await this.userService.findByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException('E-mail já está em uso');
     }
 
-    // Cria o usuário com senha criptografada
     const hashedPassword = await argon2.hash(dto.password);
     const user = await this.userService.create({
       name: dto.name,
@@ -38,14 +36,18 @@ export class AuthService {
       role: UserRole.ADMIN,
     });
 
-    // Cria a loja vinculada ao admin
+    // Cria a loja associada ao usuário
     const store = await this.storeService.create({
       name: dto.storeName,
       description: dto.description,
       subdomain: dto.subdomain,
     });
 
-    // Cria assinatura trial de 30 dias
+    // Associa a loja ao admin
+    user.store = store;
+    await this.userService.save(user);  // Certifique-se de que o usuário está sendo salvo corretamente
+
+    // Cria o trial de 30 dias
     await this.subscriptionService.createTrial(user.id);
 
     return {
@@ -55,28 +57,26 @@ export class AuthService {
     };
   }
 
-  // Login do usuário ADMIN
+  // Login do usuário
   async login(email: string, password: string) {
-    // Busca o usuário pelo email
-    const user = await this.userService.findByEmail(email);
+    const user = await this.userService.findByEmailWithStore(email);
 
     if (!user || !user.password) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    // Verifica se a senha está correta
     const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    // Gera o payload para o JWT
+    // Payload JWT incluindo informações do usuário e da loja
     const payload = {
       sub: user.id,
       role: user.role,
+      store: user.store,  // Incluindo as informações da loja no payload JWT
     };
 
-    // Gera o token de autenticação
     const access_token = this.jwtService.sign(payload);
 
     return {
@@ -86,9 +86,9 @@ export class AuthService {
     };
   }
 
-  // Validação do usuário via token
+  // Validação do usuário
   async validateUserById(id: number): Promise<User> {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findByIdWithStore(id);
     if (!user) {
       throw new UnauthorizedException('Usuário não encontrado');
     }

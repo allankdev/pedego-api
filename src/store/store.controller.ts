@@ -1,4 +1,3 @@
-// src/store/store.controller.ts
 import {
   Controller,
   Get,
@@ -32,6 +31,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../user/enums/user-role.enum';
 import { Public } from '../auth/public.decorator';
 import { Request } from 'express';
+import { ForbiddenException } from '@nestjs/common';
 
 @ApiTags('Stores')
 @ApiBearerAuth('access-token')
@@ -85,15 +85,13 @@ export class StoreController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-
-    try {
-      return await this.storeService.update(subdomain, updateStoreDto, user);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException(`Loja '${subdomain}' não encontrada para atualização`);
-      }
-      throw error;
+  
+    // Verifica se o subdomínio da loja do usuário é o mesmo do parâmetro
+    if (!user.store || user.store.subdomain !== subdomain) {
+      throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
     }
+  
+    return await this.storeService.update(subdomain, updateStoreDto, user);
   }
 
   @Patch(':subdomain/toggle-open')

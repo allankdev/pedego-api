@@ -9,6 +9,7 @@ import { Product } from '../product/product.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Category } from '../category/category.entity';
 import { OpeningHour } from '../opening-hour/opening-hour.entity';
+import { User } from '../user/user.entity'; // ✅ IMPORTAÇÃO NOVA
 
 @Entity()
 export class Store {
@@ -56,7 +57,7 @@ export class Store {
   printPaperSize: string;
 
   @Column('text', { array: true, default: () => 'ARRAY[]::text[]' })
-  paymentMethods: string[]; // 💳 Formas de pagamento aceitas
+  paymentMethods: string[];
 
   @OneToMany(() => Product, (product) => product.store)
   products: Product[];
@@ -69,4 +70,7 @@ export class Store {
 
   @OneToMany(() => OpeningHour, (hour) => hour.store)
   openingHours: OpeningHour[];
+
+  @OneToMany(() => User, (user) => user.store) // ✅ RELAÇÃO NOVA
+  users: User[];
 }
