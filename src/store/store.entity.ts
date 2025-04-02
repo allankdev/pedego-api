@@ -10,9 +10,14 @@ import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Category } from '../category/category.entity';
 import { OpeningHour } from '../opening-hour/opening-hour.entity';
 import { User } from '../user/user.entity'; // ✅ IMPORTAÇÃO NOVA
+import { Order } from '../order/order.entity';
 
 @Entity()
 export class Store {
+
+  @Column({ nullable: true })
+  avatarImageId?: string;
+  
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -44,11 +49,19 @@ export class Store {
   @Column({ default: true })
   isOpen: boolean;
 
+  @Column({ default: false })
+  autoPrint: boolean;
+
+
   @Column({ nullable: true })
   deliveryTime: string;
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   minOrderValue: number;
+
+  @OneToMany(() => Order, (order) => order.store) // ✅ Relação com pedidos
+  orders: Order[];
+  
 
   @Column({ default: 'medium' })
   printFontSize: string;

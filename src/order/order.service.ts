@@ -12,6 +12,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { User } from '../user/user.entity';
 import { OrderItem } from './order-item.entity';
 import { Product } from '../product/product.entity';
+import { Store } from '../store/store.entity';
 
 @Injectable()
 export class OrderService {
@@ -27,10 +28,13 @@ export class OrderService {
 
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+
+    @InjectRepository(Store)
+    private storeRepository: Repository<Store>,
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
-    const { items, ...orderData } = createOrderDto;
+    const { items, storeId, ...orderData } = createOrderDto;
 
     let user: User | null = null;
     if (createOrderDto.userId) {
@@ -38,14 +42,17 @@ export class OrderService {
       if (!user) throw new NotFoundException('Usuário não encontrado');
     }
 
+    const store = await this.storeRepository.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Loja não encontrada');
+
     const order = this.orderRepository.create({
       ...orderData,
       user: user || null,
+      store,
     });
 
     await this.orderRepository.save(order);
 
-    // Criar e associar os itens
     const orderItems: OrderItem[] = [];
     for (const item of items) {
       const product = await this.productRepository.findOne({ where: { id: item.productId } });
@@ -62,7 +69,26 @@ export class OrderService {
 
     await this.orderItemRepository.save(orderItems);
 
-    return this.findOne(order.id); // já retorna com os relacionamentos
+    const createdOrder = await this.findOne(order.id);
+
+    // ✅ Impressão automática se configurado
+    if (store.autoPrint) {
+      await this.printOrder(createdOrder);
+    }
+
+    return createdOrder;
+  }
+
+  private async printOrder(order: Order) {
+    // Aqui está a simulação de impressão — depois pode virar envio para serviço externo
+    console.log('🖨️ Impressão Automática de Pedido');
+    console.log(`Pedido #${order.id} - Cliente: ${order.customerName}`);
+    console.log('Itens:');
+    for (const item of order.items) {
+      console.log(`- ${item.product.name} x${item.quantity}`);
+    }
+    console.log(`Total: R$ ${order.total?.toFixed(2)}`);
+    console.log('===========================');
   }
 
   async findAll(user: { id: number; role: string }): Promise<Order[]> {

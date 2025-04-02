@@ -12,6 +12,8 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { Product } from './product.entity';
@@ -21,6 +23,7 @@ import {
   ApiTags,
   ApiOperation,
   ApiBody,
+  ApiConsumes,
   ApiResponse,
   ApiParam,
   ApiBearerAuth,
@@ -28,6 +31,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Products')
 @Controller('products')
@@ -59,13 +64,32 @@ export class ProductController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth('access-token')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Dados para criar produto com imagem',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        price: { type: 'number' },
+        available: { type: 'boolean' },
+        storeId: { type: 'number' },
+        categoryId: { type: 'number' },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   @ApiOperation({ summary: 'Cria um novo produto (Apenas ADMIN)' })
-  @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 201, description: 'Produto criado com sucesso', type: Product })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async create(@Body() createProductDto: CreateProductDto): Promise<Product> {
+  async create(
+    @Body() createProductDto: CreateProductDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<Product> {
     try {
-      return this.productService.create(createProductDto);
+      return this.productService.create(createProductDto, file);
     } catch (error) {
       throw new HttpException(
         {
@@ -82,17 +106,34 @@ export class ProductController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth('access-token')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Atualiza um produto (Apenas ADMIN)' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do produto' })
-  @ApiBody({ type: UpdateProductDto })
+  @ApiBody({
+    description: 'Dados para atualizar produto com imagem (opcional)',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        price: { type: 'number' },
+        available: { type: 'boolean' },
+        storeId: { type: 'number' },
+        categoryId: { type: 'number' },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Produto atualizado com sucesso', type: Product })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<Product> {
     try {
-      return this.productService.update(id, updateProductDto);
+      return this.productService.update(id, updateProductDto, file);
     } catch (error) {
       throw new HttpException(
         {

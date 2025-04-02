@@ -7,6 +7,7 @@ import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { User } from '../user/user.entity';
 import { Product } from '../product/product.entity';
+import { Store } from '../store/store.entity'; 
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { Product } from '../product/product.entity';
       OrderItem, // ✅ Adicione isso!
       User,
       Product,
+      Store,
     ]),
   ],
   controllers: [OrderController],

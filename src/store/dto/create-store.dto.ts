@@ -82,6 +82,12 @@ export class CreateStoreDto {
   @IsString()
   printPaperSize?: string;
 
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  autoPrint?: boolean;
+
+
   @IsOptional()
   @ApiProperty({
     example: ['pix', 'dinheiro', 'cartão de crédito'],

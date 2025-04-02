@@ -19,6 +19,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { NeighborhoodModule } from './neighborhood/neighborhood.module';
 import { CategoryModule } from './category/category.module';
 import { OpeningHourModule } from './opening-hour/opening-hour.module';
+import {CloudflareR2Module} from './cloudflare/cloudflare-r2.module';
 
 
 
@@ -51,6 +52,7 @@ import { OpeningHourModule } from './opening-hour/opening-hour.module';
     NeighborhoodModule,
     CategoryModule,
     OpeningHourModule,
+    CloudflareR2Module,
      // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],

@@ -13,6 +13,7 @@ import { User } from '../user/user.entity';
 import { Delivery } from '../delivery/delivery.entity';
 import { Payment } from '../payment/payment.entity';
 import { OrderItem } from './order-item.entity';
+import { Store } from '../store/store.entity'; // ✅ NOVO
 
 export enum OrderStatus {
   PENDENTE = 'pendente',
@@ -42,7 +43,7 @@ export class Order {
   paymentMethod: 'pix' | 'dinheiro' | 'cartao';
 
   @Column({ nullable: true })
-  observations?: string; // ✅ Novo campo para observações
+  observations?: string;
 
   @Column({
     type: 'enum',
@@ -51,8 +52,14 @@ export class Order {
   })
   status: OrderStatus;
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 }) // ✅ NOVO
+  total: number;
+
   @ManyToOne(() => User, (user) => user.orders, { nullable: true })
   user: User;
+
+  @ManyToOne(() => Store, (store) => store.orders, { nullable: false }) // ✅ NOVO
+  store: Store;
 
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];

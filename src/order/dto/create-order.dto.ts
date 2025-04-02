@@ -80,4 +80,11 @@ export class CreateOrderDto {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID da loja que está recebendo o pedido',
+  })
+  @IsNumber()
+  storeId: number;
 }

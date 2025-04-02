@@ -1,3 +1,4 @@
+// PATCH /stores/:subdomain/avatar
 import {
   Controller,
   Get,
@@ -13,6 +14,9 @@ import {
   ValidationPipe,
   UseGuards,
   Req,
+  UploadedFile,
+  UseInterceptors,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +25,7 @@ import {
   ApiParam,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { StoreService } from './store.service';
 import { CreateStoreDto } from './dto/create-store.dto';
@@ -31,7 +36,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../user/enums/user-role.enum';
 import { Public } from '../auth/public.decorator';
 import { Request } from 'express';
-import { ForbiddenException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Stores')
 @ApiBearerAuth('access-token')
@@ -85,13 +91,36 @@ export class StoreController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-  
-    // Verifica se o subdomínio da loja do usuário é o mesmo do parâmetro
+
     if (!user.store || user.store.subdomain !== subdomain) {
       throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
     }
-  
+
     return await this.storeService.update(subdomain, updateStoreDto, user);
+  }
+
+  @Patch(':subdomain/avatar')
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Atualiza apenas o avatar da loja' })
+  @ApiParam({ name: 'subdomain', type: String })
+  async updateAvatar(
+    @Param('subdomain') subdomain: string,
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const user = req.user;
+
+    if (!user.store || user.store.subdomain !== subdomain) {
+      throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
+    }
+
+    if (!file) {
+      throw new BadRequestException('Nenhuma imagem enviada');
+    }
+
+    return await this.storeService.updateAvatar(subdomain, user, file);
   }
 
   @Patch(':subdomain/toggle-open')

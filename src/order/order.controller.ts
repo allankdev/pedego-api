@@ -39,9 +39,10 @@ export class OrderController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createOrder(@Body() orderData: CreateOrderDto, @Req() req: Request): Promise<Order> {
     const user = req.user as any;
+
     return await this.orderService.createOrder({
       ...orderData,
-      userId: user?.id ?? null,
+      userId: user?.id ?? null, // se estiver logado, usa user.id
     });
   }
 
@@ -94,7 +95,6 @@ export class OrderController {
     await this.orderService.removeOrder(id, user);
   }
 
-  // ✅ Rota pública para acompanhar um pedido específico
   @Get(':id')
   @ApiOperation({ summary: 'Consulta um pedido pelo ID (público)' })
   @ApiParam({ name: 'id', type: Number, description: 'ID do pedido' })

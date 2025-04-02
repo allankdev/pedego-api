@@ -10,6 +10,10 @@ import { Category } from '../category/category.entity';
 
 @Entity()
 export class Product {
+
+  @Column({ nullable: true })
+  imageId?: string;
+
   @PrimaryGeneratedColumn()
   id: number;
 

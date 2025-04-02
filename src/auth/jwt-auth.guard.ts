@@ -10,32 +10,27 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Verifica se a rota ou controlador tem o decorator @Public()
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
     if (isPublic) {
-      return true; // Permite acesso sem autenticação se for pública
+      return true;
     }
 
     try {
-      // Chama a implementação padrão do AuthGuard('jwt')
       const result = await super.canActivate(context);
+      const request = context.switchToHttp().getRequest();
+      const user = request.user;
 
-      // Obtém o usuário do contexto da requisição
-      const user = context.switchToHttp().getRequest().user;
-
-      // Aqui você pode verificar se a loja existe no usuário
-      if (!user.store) {
+      if (!user?.store) {
         throw new UnauthorizedException('Loja não associada ao usuário');
       }
 
-      // Verifique o conteúdo de req.user para depuração
-      console.log('USER (JwtAuthGuard):', user); // Verifique se o user está sendo preenchido corretamente
+      console.log('USER (JwtAuthGuard):', user);
 
-      return result instanceof Promise ? result : Promise.resolve(result);
+      return !!result; // ⬅️ Aqui a correção: resultado já está aguardado, só converte pra boolean
     } catch (error) {
       console.error('Erro de autenticação:', error);
       throw new UnauthorizedException('Usuário não autenticado ou sessão expirada');

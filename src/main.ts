@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger.config';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -18,7 +18,16 @@ async function bootstrap() {
     credentials: true,
   });
 
-  setupSwagger(app); // 👈 Isso já chama a função correta
+  // ✅ Ativa transformação de tipos no ValidationPipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  setupSwagger(app);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
