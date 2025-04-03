@@ -9,6 +9,7 @@ import { Product } from './product.entity';
 import { Category } from '../category/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Stock } from '../stock/stock.entity'; 
 import {
   S3Client,
   PutObjectCommand,
@@ -25,6 +26,9 @@ export class ProductService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    
+    @InjectRepository(Stock)
+    private readonly stockRepository: Repository<Stock>,
 
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
@@ -174,25 +178,43 @@ export class ProductService {
   }
 
   async remove(id: number): Promise<void> {
-    const product = await this.productRepository.findOne({ where: { id } });
-
-    if (!product) {
-      throw new NotFoundException(`Produto com o ID ${id} não encontrado para remoção`);
-    }
-
-    if (product.imageId) {
-      try {
-        await this.s3.send(
-          new DeleteObjectCommand({
-            Bucket: this.bucket,
-            Key: product.imageId,
-          }),
-        );
-      } catch (error) {
-        console.error('Erro ao remover imagem da R2:', error);
+    try {
+      const product = await this.productRepository.findOne({ where: { id } });
+  
+      if (!product) {
+        throw new NotFoundException(`Produto com o ID ${id} não encontrado para remoção`);
       }
+  
+      console.log('🟢 Produto encontrado:', product);
+  
+      // Tenta remover o estoque vinculado
+      const stockResult = await this.stockRepository.delete({ productId: id });
+      console.log('🗑️ Estoque deletado:', stockResult);
+  
+      // Remove imagem se existir
+      if (product.imageId) {
+        try {
+          console.log('🎯 Tentando remover imagem:', product.imageId);
+          await this.s3.send(
+            new DeleteObjectCommand({
+              Bucket: this.bucket,
+              Key: product.imageId,
+            }),
+          );
+          console.log('✅ Imagem removida do R2');
+        } catch (err) {
+          console.error('⚠️ Erro ao remover imagem da R2:', err);
+        }
+      }
+  
+      // Remove o produto
+      await this.productRepository.remove(product);
+      console.log('✅ Produto removido com sucesso');
+    } catch (error) {
+      console.error('❌ ERRO AO REMOVER PRODUTO:', error);
+      throw new InternalServerErrorException('Erro ao remover produto');
     }
-
-    await this.productRepository.remove(product);
   }
+  
 }
+  

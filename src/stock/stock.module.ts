@@ -10,5 +10,6 @@ import { Product } from '../product/product.entity';
   imports: [TypeOrmModule.forFeature([Stock, Product])],
   providers: [StockService],
   controllers: [StockController],
+  exports: [TypeOrmModule, StockService], // 👈 permite que outros módulos usem o repo e serviço
 })
 export class StockModule {}

@@ -15,6 +15,8 @@ import { OrderItem } from './order-item.entity';
 import { Product } from '../product/product.entity';
 import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
+import { Stock } from '../stock/stock.entity';
+
 
 @Injectable()
 export class OrderService {
@@ -31,11 +33,15 @@ export class OrderService {
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
 
+    @InjectRepository(Stock)
+    private stockRepository: Repository<Stock>,
+
     @InjectRepository(Store)
     private storeRepository: Repository<Store>,
 
     @InjectRepository(Neighborhood)
     private neighborhoodRepository: Repository<Neighborhood>,
+
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
@@ -57,16 +63,41 @@ export class OrderService {
     for (const item of items) {
       const product = await this.productRepository.findOne({ where: { id: item.productId } });
       if (!product) throw new NotFoundException(`Produto ${item.productId} não encontrado`);
-
+    
+      // 🧮 Soma o preço ao total
       total += Number(product.price) * item.quantity;
-
+    
+      // ✅ Se o produto tiver controle de estoque
+      if (product.hasStockControl) {
+        const stock = await this.stockRepository.findOne({
+          where: { productId: product.id, storeId: store.id },
+        });
+    
+        if (!stock) throw new NotFoundException(`Estoque do produto ${product.name} não encontrado`);
+        if (stock.quantity < item.quantity) {
+          throw new BadRequestException(`Estoque insuficiente para o produto ${product.name}`);
+        }
+    
+        // 🔽 Subtrai do estoque
+        stock.quantity -= item.quantity;
+        await this.stockRepository.save(stock);
+    
+        // 🚫 Se zerar, desativa o produto
+        if (stock.quantity <= 0 && product.available) {
+          product.available = false;
+          await this.productRepository.save(product);
+        }
+      }
+    
+      // Cria o item do pedido
       const orderItem = this.orderItemRepository.create({
         product,
         quantity: item.quantity,
       });
-
+    
       orderItems.push(orderItem);
     }
+    
 
     let neighborhood: Neighborhood | undefined;
     if (deliveryType === 'entrega' && neighborhoodId) {

@@ -9,6 +9,7 @@ import { User } from '../user/user.entity';
 import { Product } from '../product/product.entity';
 import { Store } from '../store/store.entity'; 
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
+import { Stock } from '../stock/stock.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Neighborhood } from '../neighborhood/neighborhood.entity';
       Product,
       Store,
       Neighborhood,
+      Stock,
     ]),
   ],
   controllers: [OrderController],
