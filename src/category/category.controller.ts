@@ -40,7 +40,7 @@ export class CategoryController {
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body() dto: CreateCategoryDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     const user = req.user as any;
     return this.categoryService.create(storeId, dto, user);
@@ -54,13 +54,21 @@ export class CategoryController {
     return this.categoryService.findAll(storeId, user);
   }
 
+  @Get('my-store')
+  @ApiOperation({ summary: 'Listar categorias da loja do admin autenticado' })
+  findMine(@Req() req: Request) {
+    const user = req.user as any;
+    const storeId = user.store?.id;
+    return this.categoryService.findAll(storeId, user);
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar categoria' })
   @ApiParam({ name: 'id', type: Number })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCategoryDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     const user = req.user as any;
     return this.categoryService.update(id, dto, user);

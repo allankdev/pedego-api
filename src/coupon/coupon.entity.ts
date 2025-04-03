@@ -1,8 +1,12 @@
-// src/coupon/coupon.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn, // 👈 adicione isso
+} from 'typeorm';
 import { User } from '../user/user.entity';
 import { Store } from '../store/store.entity';
-
 
 @Entity()
 export class Coupon {
@@ -13,7 +17,7 @@ export class Coupon {
   code: string;
 
   @Column('decimal')
-  discount: number; // em reais ou percentual, você escolhe
+  discount: number;
 
   @Column({ default: true })
   active: boolean;
@@ -25,5 +29,8 @@ export class Coupon {
   expiresAt: Date;
 
   @ManyToOne(() => Store)
-store: Store;
+  store: Store;
+
+  @CreateDateColumn() // 👈 isso resolve o erro ao ordenar por createdAt
+  createdAt: Date;
 }

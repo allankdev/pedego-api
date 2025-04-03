@@ -11,9 +11,6 @@ import { Category } from '../category/category.entity';
 @Entity()
 export class Product {
 
-  @Column({ nullable: true })
-  imageId?: string;
-
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -28,6 +25,12 @@ export class Product {
 
   @Column({ default: true })
   available: boolean;
+
+  @Column({ nullable: true })
+  imageId?: string;
+
+  @Column({ default: false })
+  hasStockControl: boolean;
 
   @ManyToOne(() => Store, (store) => store.products, { onDelete: 'CASCADE' })
   store: Store;

@@ -45,6 +45,14 @@ export class ProductService {
     });
   }
 
+  async findByStoreId(storeId: number): Promise<Product[]> {
+    return this.productRepository.find({
+      where: { store: { id: storeId } },
+      relations: ['category', 'store'],
+      order: { name: 'ASC' },
+    });
+  }
+
   async findOne(id: number): Promise<Product> {
     const product = await this.productRepository.findOne({
       where: { id },
@@ -62,10 +70,11 @@ export class ProductService {
     createProductDto: CreateProductDto,
     file?: Express.Multer.File,
   ): Promise<Product> {
-    const { categoryId, ...data } = createProductDto;
-
+    const { categoryId, storeId, ...data } = createProductDto;
+  
     const product = this.productRepository.create(data);
-
+  
+    // ✅ Associa categoria, se informada
     if (categoryId) {
       const category = await this.categoryRepository.findOne({
         where: { id: categoryId },
@@ -73,10 +82,22 @@ export class ProductService {
       if (!category) throw new NotFoundException('Categoria não encontrada');
       product.category = category;
     }
-
+  
+    // ✅ Busca e associa a loja
+    if (storeId) {
+      const store = await this.productRepository.manager.findOne('Store', {
+        where: { id: storeId },
+      });
+      if (!store) throw new NotFoundException('Loja não encontrada');
+      product.store = store as any;
+    } else {
+      throw new NotFoundException('StoreId é obrigatório');
+    }
+  
+    // ✅ Upload da imagem (se existir)
     if (file) {
       const filename = `${uuidv4()}-${file.originalname.replace(/\s/g, '_')}`;
-
+  
       try {
         await this.s3.send(
           new PutObjectCommand({
@@ -92,9 +113,10 @@ export class ProductService {
         throw new InternalServerErrorException('Falha no upload da imagem');
       }
     }
-
+  
     return this.productRepository.save(product);
   }
+  
 
   async update(
     id: number,
@@ -102,22 +124,21 @@ export class ProductService {
     file?: Express.Multer.File,
   ): Promise<Product> {
     const product = await this.productRepository.findOne({ where: { id } });
-  
+
     if (!product) {
       throw new NotFoundException(`Produto com o ID ${id} não encontrado para atualização`);
     }
-  
+
     const { categoryId, ...data } = updateProductDto;
     Object.assign(product, data);
-  
+
     if (categoryId) {
       const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
       if (!category) throw new NotFoundException('Categoria não encontrada');
       product.category = category;
     }
-  
+
     if (file) {
-      // remove imagem antiga
       if (product.imageId) {
         try {
           await this.s3.send(
@@ -130,10 +151,9 @@ export class ProductService {
           console.error('Erro ao remover imagem anterior do R2:', err);
         }
       }
-  
-      // envia nova imagem
+
       const filename = `${uuidv4()}-${file.originalname.replace(/\s/g, '_')}`;
-  
+
       try {
         await this.s3.send(
           new PutObjectCommand({
@@ -149,10 +169,9 @@ export class ProductService {
         throw new InternalServerErrorException('Falha ao atualizar a imagem do produto');
       }
     }
-  
+
     return this.productRepository.save(product);
   }
-  
 
   async remove(id: number): Promise<void> {
     const product = await this.productRepository.findOne({ where: { id } });
@@ -171,7 +190,6 @@ export class ProductService {
         );
       } catch (error) {
         console.error('Erro ao remover imagem da R2:', error);
-        // não lança exceção, para garantir que o produto seja deletado mesmo se o delete falhar
       }
     }
 

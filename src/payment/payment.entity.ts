@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
 import { PaymentMethod } from './dto/create-payment.dto';
 
@@ -20,6 +20,5 @@ export class Payment {
   paymentDate: Date;
 
   @OneToOne(() => Order, (order) => order.payment, { onDelete: 'CASCADE' })
-  @JoinColumn() // 👈 precisa desse decorator no lado dono
   order: Order;
 }

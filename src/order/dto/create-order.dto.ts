@@ -1,10 +1,10 @@
+// src/order/dto/create-order.dto.ts
 import {
   IsString,
   IsNotEmpty,
   IsOptional,
   IsEnum,
   IsArray,
-  IsEmail,
   ValidateNested,
   IsNumber,
   Min,
@@ -35,10 +35,20 @@ export class CreateOrderDto {
   @IsNotEmpty()
   customerPhone: string;
 
-  @ApiProperty({ example: 'Rua Exemplo, 123 - Bairro Legal' })
+  @ApiProperty({ example: 'Rua Exemplo, 123 - Bairro Legal', required: false })
   @IsString()
   @IsOptional()
-  customerAddress: string;
+  customerAddress?: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID do bairro (obrigatório se entrega)',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  neighborhoodId?: number;
 
   @ApiProperty({
     example: 'entrega',

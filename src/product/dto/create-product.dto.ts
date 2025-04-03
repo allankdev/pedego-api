@@ -1,4 +1,3 @@
-// src/product/dto/create-product.dto.ts
 import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -12,7 +11,7 @@ export class CreateProductDto {
   @ApiProperty({ example: 29.90 })
   @IsNotEmpty()
   @IsNumber()
-  @Type(() => Number) // 👈 importante!
+  @Type(() => Number)
   price: number;
 
   @ApiProperty({ example: 'Pizza com calabresa, cebola e mussarela' })
@@ -22,18 +21,24 @@ export class CreateProductDto {
 
   @ApiProperty({ default: true })
   @IsBoolean()
-  @Type(() => Boolean) // 👈 importante!
+  @Type(() => Boolean)
   available: boolean;
 
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
   @IsNumber()
-  @Type(() => Number) // 👈 importante!
+  @Type(() => Number)
   categoryId?: number;
 
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
   @IsNumber()
-  @Type(() => Number) // 👈 importante!
+  @Type(() => Number)
   storeId?: number;
+
+  @ApiProperty({ default: false, description: 'Define se o produto deve ter controle de estoque' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  hasStockControl?: boolean;
 }

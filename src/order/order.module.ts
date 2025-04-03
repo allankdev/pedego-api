@@ -8,6 +8,7 @@ import { OrderController } from './order.controller';
 import { User } from '../user/user.entity';
 import { Product } from '../product/product.entity';
 import { Store } from '../store/store.entity'; 
+import { Neighborhood } from '../neighborhood/neighborhood.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { Store } from '../store/store.entity';
       User,
       Product,
       Store,
+      Neighborhood,
     ]),
   ],
   controllers: [OrderController],

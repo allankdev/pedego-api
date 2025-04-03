@@ -12,6 +12,7 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -28,6 +29,7 @@ import { UpdateStockDto } from './dto/update-stock.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Request } from 'express';
 
 @ApiTags('Stock')
 @ApiBearerAuth('access-token')
@@ -62,10 +64,19 @@ export class StockController {
 
   @Get()
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'Lista todos os estoques' })
+  @ApiOperation({ summary: 'Lista todos os estoques (somente SUPER_ADMIN)' })
   @ApiResponse({ status: 200, description: 'Lista de estoques', type: [Stock] })
   async findAll(): Promise<Stock[]> {
     return this.stockService.findAll();
+  }
+
+  @Get('mine')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Lista os estoques da loja autenticada' })
+  @ApiResponse({ status: 200, description: 'Lista de estoques da loja', type: [Stock] })
+  async findMine(@Req() req: Request): Promise<Stock[]> {
+    const user = req.user as any;
+    return this.stockService.findByStoreId(user.store?.id);
   }
 
   @Post()

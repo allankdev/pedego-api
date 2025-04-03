@@ -18,6 +18,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../user/enums/user-role.enum';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { Request } from 'express';
 
 @ApiTags('Neighborhoods')
 @ApiBearerAuth('access-token')
@@ -32,29 +33,34 @@ export class NeighborhoodController {
   @ApiParam({ name: 'storeId', type: Number })
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body() dto: CreateNeighborhoodDto
+    @Body() dto: CreateNeighborhoodDto,
+    @Req() req: Request
   ) {
-    return this.service.create(storeId, dto);
+    const user = req.user as any;
+    return this.service.create(storeId, dto, user);
   }
 
   @Get(':storeId')
   @ApiOperation({ summary: 'Listar bairros da loja' })
   @ApiParam({ name: 'storeId', type: Number })
-  findAll(@Param('storeId', ParseIntPipe) storeId: number) {
-    return this.service.findAll(storeId);
+  findAll(@Param('storeId', ParseIntPipe) storeId: number, @Req() req: Request) {
+    const user = req.user as any;
+    return this.service.findAll(storeId, user);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar bairro' })
   @ApiParam({ name: 'id', type: Number })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateNeighborhoodDto) {
-    return this.service.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateNeighborhoodDto, @Req() req: Request) {
+    const user = req.user as any;
+    return this.service.update(id, dto, user);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover bairro' })
   @ApiParam({ name: 'id', type: Number })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    const user = req.user as any;
+    return this.service.remove(id, user);
   }
 }

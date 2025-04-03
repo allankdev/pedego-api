@@ -1,3 +1,4 @@
+// src/coupon/coupon.controller.ts
 import {
   Controller,
   Post,
@@ -36,7 +37,6 @@ import { Coupon } from './coupon.entity';
 export class CouponController {
   constructor(private readonly couponService: CouponService) {}
 
-  // Rota para criar um novo cupom
   @Post()
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Cria um novo cupom (apenas ADMIN)' })
@@ -47,10 +47,9 @@ export class CouponController {
     return this.couponService.create(dto, req.user);
   }
 
-  // Rota para validar cupom (público)
   @Get('validate')
   @ApiOperation({ summary: 'Valida um cupom por código (público)' })
-  @ApiQuery({ name: 'code', type: String, required: true, description: 'Código do cupom' })
+  @ApiQuery({ name: 'code', type: String, required: true })
   @ApiResponse({
     status: 200,
     description: 'Validação do cupom retornada com sucesso',
@@ -67,41 +66,30 @@ export class CouponController {
     return this.couponService.validate(code);
   }
 
-  // Rota para listar cupons (somente ADMIN)
   @Get()
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'Lista todos os cupons (somente ADMIN)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cupons listados com sucesso',
-    type: [Coupon],
-  })
-  async listAll() {
-    return this.couponService.findAll();
+  @ApiOperation({ summary: 'Lista cupons da loja do ADMIN autenticado' })
+  @ApiResponse({ status: 200, description: 'Cupons listados com sucesso', type: [Coupon] })
+  async listAll(@Req() req: any) {
+    return this.couponService.findAllByStore(req.user.store.id);
   }
 
-  // Rota para editar um cupom
   @Put(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Atualiza um cupom (somente ADMIN)' })
-  @ApiParam({ name: 'id', type: String, required: true, description: 'ID do cupom' })
+  @ApiParam({ name: 'id', type: String })
   @ApiBody({ type: UpdateCouponDto })
   @ApiResponse({ status: 200, description: 'Cupom atualizado com sucesso', type: Coupon })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateCouponDto,
-    @Req() req: any,
-  ): Promise<Coupon> {
+  async update(@Param('id') id: string, @Body() dto: UpdateCouponDto, @Req() req: any): Promise<Coupon> {
     return this.couponService.update(id, dto, req.user);
   }
 
-  // Rota para excluir um cupom
   @Delete(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Exclui um cupom (somente ADMIN)' })
-  @ApiParam({ name: 'id', type: String, required: true, description: 'ID do cupom' })
+  @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Cupom excluído com sucesso' })
-  async remove(@Param('id') id: string): Promise<void> {
-    return this.couponService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<void> {
+    return this.couponService.remove(id, req.user);
   }
 }

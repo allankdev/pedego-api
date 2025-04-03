@@ -10,10 +10,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../user/user.entity';
-import { Delivery } from '../delivery/delivery.entity';
 import { Payment } from '../payment/payment.entity';
 import { OrderItem } from './order-item.entity';
 import { Store } from '../store/store.entity'; // ✅ NOVO
+import { Neighborhood } from '../neighborhood/neighborhood.entity';
+
 
 export enum OrderStatus {
   PENDENTE = 'pendente',
@@ -64,9 +65,6 @@ export class Order {
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];
 
-  @OneToMany(() => Delivery, (delivery) => delivery.order)
-  deliveries: Delivery[];
-
   @OneToOne(() => Payment, (payment) => payment.order, { cascade: true })
   @JoinColumn()
   payment: Payment;
@@ -76,4 +74,9 @@ export class Order {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToOne(() => Neighborhood, { nullable: true })
+@JoinColumn()
+neighborhood?: Neighborhood;
+
 }

@@ -1,29 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Coupon } from './coupon.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
+import { Store } from '../store/store.entity';
 
 @Injectable()
 export class CouponService {
   constructor(
     @InjectRepository(Coupon)
     private readonly couponRepository: Repository<Coupon>,
+
+    @InjectRepository(Store)
+    private readonly storeRepository: Repository<Store>,
   ) {}
 
-  // Criação de um novo cupom
   async create(dto: CreateCouponDto, user: any): Promise<Coupon> {
-    const coupon = this.couponRepository.create(dto);
+    const store = await this.storeRepository.findOne({
+      where: { id: user.store.id },
+    });
+
+    if (!store) throw new NotFoundException('Loja não encontrada');
+
+    const coupon = this.couponRepository.create({
+      ...dto,
+      store,
+    });
+
     return this.couponRepository.save(coupon);
   }
 
-  // Validação de um cupom
   async validate(code: string): Promise<any> {
     const coupon = await this.couponRepository.findOne({ where: { code } });
+
     if (!coupon || new Date(coupon.expiresAt) < new Date()) {
       return { valid: false };
     }
+
     return {
       code: coupon.code,
       discountPercentage: coupon.discount,
@@ -32,39 +50,37 @@ export class CouponService {
     };
   }
 
-  // Listar todos os cupons
-  async findAll(): Promise<Coupon[]> {
-    return this.couponRepository.find();
+  async findAllByStore(storeId: number): Promise<Coupon[]> {
+    return this.couponRepository.find({
+      where: { store: { id: storeId } },
+      order: { createdAt: 'DESC' },
+    });
   }
 
-  // Atualizar um cupom existente
   async update(id: string, dto: UpdateCouponDto, user: any): Promise<Coupon> {
-    // Convertendo id para número
-    const couponId = Number(id);
-
     const coupon = await this.couponRepository.findOne({
-      where: { id: couponId }, // Agora estamos passando o id como número
+      where: { id: Number(id) },
+      relations: ['store'],
     });
 
-    if (!coupon) {
-      throw new Error('Cupom não encontrado');
+    if (!coupon) throw new NotFoundException('Cupom não encontrado');
+    if (coupon.store.id !== user.store.id) {
+      throw new ForbiddenException('Você não tem permissão para editar este cupom');
     }
 
     Object.assign(coupon, dto);
     return this.couponRepository.save(coupon);
   }
 
-  // Excluir um cupom
-  async remove(id: string): Promise<void> {
-    // Convertendo id para número
-    const couponId = Number(id);
-
+  async remove(id: string, user: any): Promise<void> {
     const coupon = await this.couponRepository.findOne({
-      where: { id: couponId }, // Agora estamos passando o id como número
+      where: { id: Number(id) },
+      relations: ['store'],
     });
 
-    if (!coupon) {
-      throw new Error('Cupom não encontrado');
+    if (!coupon) throw new NotFoundException('Cupom não encontrado');
+    if (coupon.store.id !== user.store.id) {
+      throw new ForbiddenException('Você não tem permissão para remover este cupom');
     }
 
     await this.couponRepository.remove(coupon);

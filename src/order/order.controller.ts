@@ -1,11 +1,12 @@
+// src/order/order.controller.ts
 import {
   Controller,
-  Get,
   Post,
-  Body,
-  Param,
+  Get,
   Put,
   Delete,
+  Param,
+  Body,
   ParseIntPipe,
   UsePipes,
   ValidationPipe,
@@ -39,10 +40,9 @@ export class OrderController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createOrder(@Body() orderData: CreateOrderDto, @Req() req: Request): Promise<Order> {
     const user = req.user as any;
-
     return await this.orderService.createOrder({
       ...orderData,
-      userId: user?.id ?? null, // se estiver logado, usa user.id
+      userId: user?.id ?? null,
     });
   }
 
@@ -50,7 +50,6 @@ export class OrderController {
   @Get()
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Lista todos os pedidos (somente ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Lista de pedidos retornada com sucesso' })
   async findAll(@Req() req: Request): Promise<Order[]> {
     const user = req.user as any;
     return this.orderService.findAll(user);
@@ -60,25 +59,31 @@ export class OrderController {
   @Get('me')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Lista os pedidos do usuário autenticado' })
-  @ApiResponse({ status: 200, description: 'Lista de pedidos do usuário' })
   async findMyOrders(@Req() req: Request): Promise<Order[]> {
     const user = req.user as any;
     return await this.orderService.findByUserId(user.id);
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('my-store')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Lista os pedidos da loja do admin autenticado' })
+  @ApiResponse({ status: 200, description: 'Lista de pedidos da loja' })
+  async findOrdersByStore(@Req() req: Request): Promise<Order[]> {
+    const user = req.user as any;
+    return await this.orderService.findByStore(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Atualiza um pedido' })
-  @ApiParam({ name: 'id', type: Number, description: 'ID do pedido' })
+  @ApiParam({ name: 'id', type: Number })
   @ApiBody({ type: UpdateOrderDto })
-  @ApiResponse({ status: 200, description: 'Pedido atualizado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Erro ao atualizar pedido' })
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async updateOrder(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateOrderDto: UpdateOrderDto,
-    @Req() req: Request
+    @Req() req: Request,
   ): Promise<Order> {
     return await this.orderService.updateOrder(id, updateOrderDto);
   }
@@ -87,9 +92,7 @@ export class OrderController {
   @Delete(':id')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Remove um pedido (usuário ou admin)' })
-  @ApiParam({ name: 'id', type: Number, description: 'ID do pedido' })
-  @ApiResponse({ status: 200, description: 'Pedido removido com sucesso' })
-  @ApiResponse({ status: 400, description: 'Erro ao deletar pedido' })
+  @ApiParam({ name: 'id', type: Number })
   async removeOrder(@Param('id', ParseIntPipe) id: number, @Req() req: Request): Promise<void> {
     const user = req.user as any;
     await this.orderService.removeOrder(id, user);
@@ -97,9 +100,34 @@ export class OrderController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Consulta um pedido pelo ID (público)' })
-  @ApiParam({ name: 'id', type: Number, description: 'ID do pedido' })
-  @ApiResponse({ status: 200, description: 'Pedido retornado com sucesso', type: Order })
+  @ApiParam({ name: 'id', type: Number })
   async getOrderById(@Param('id', ParseIntPipe) id: number): Promise<Order> {
     return this.orderService.findOne(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+@Get('my-store/customers')
+@ApiBearerAuth('access-token')
+@ApiOperation({ summary: 'Ranking de clientes da loja do admin autenticado' })
+@ApiResponse({
+  status: 200,
+  description: 'Lista de clientes com total de pedidos e valor gasto',
+  schema: {
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        phone: { type: 'string' },
+        orders: { type: 'number' },
+        totalSpent: { type: 'string' },
+      },
+    },
+  },
+})
+async getCustomerRanking(@Req() req: Request) {
+  const user = req.user as any;
+  return this.orderService.getCustomerRankingByStore(user.store?.id);
+}
+
 }
