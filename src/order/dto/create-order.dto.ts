@@ -22,10 +22,20 @@ export class OrderItemDto {
   @IsNumber()
   @Min(1)
   quantity: number;
+
+  @ApiProperty({
+    example: [3, 5],
+    description: 'IDs dos extras selecionados para este produto',
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  extraIds?: number[];
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ example: 'João da Silva' })
+  @ApiProperty({ example: 'Joao da Silva' })
   @IsString()
   @IsNotEmpty()
   customerName: string;
@@ -35,7 +45,10 @@ export class CreateOrderDto {
   @IsNotEmpty()
   customerPhone: string;
 
-  @ApiProperty({ example: 'Rua Exemplo, 123 - Bairro Legal', required: false })
+  @ApiProperty({
+    example: 'Rua Exemplo, 123 - Bairro Legal',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   customerAddress?: string;
@@ -67,7 +80,7 @@ export class CreateOrderDto {
   @ApiProperty({
     example: 'Sem cebola, tocar campainha',
     required: false,
-    description: 'Observações adicionais do pedido',
+    description: 'Observacoes adicionais do pedido',
   })
   @IsOptional()
   @IsString()
@@ -93,7 +106,7 @@ export class CreateOrderDto {
 
   @ApiProperty({
     example: 1,
-    description: 'ID da loja que está recebendo o pedido',
+    description: 'ID da loja que esta recebendo o pedido',
   })
   @IsNumber()
   storeId: number;

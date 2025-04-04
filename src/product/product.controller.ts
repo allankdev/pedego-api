@@ -15,12 +15,12 @@ import {
   HttpStatus,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { ProductService } from './product.service';
-import { Product } from './product.entity';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+} from '@nestjs/common'
+import { Request } from 'express'
+import { ProductService } from './product.service'
+import { Product } from './product.entity'
+import { CreateProductDto } from './dto/create-product.dto'
+import { UpdateProductDto } from './dto/update-product.dto'
 import {
   ApiTags,
   ApiOperation,
@@ -29,13 +29,13 @@ import {
   ApiResponse,
   ApiParam,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { UserRole } from '../user/enums/user-role.enum';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { RolesGuard } from '../auth/roles.guard'
+import { Roles } from '../auth/roles.decorator'
+import { UserRole } from '../user/enums/user-role.enum'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { memoryStorage } from 'multer'
 
 @ApiTags('Products')
 @Controller('products')
@@ -46,7 +46,7 @@ export class ProductController {
   @ApiOperation({ summary: 'Lista todos os produtos' })
   @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso', type: [Product] })
   async findAll(): Promise<Product[]> {
-    return this.productService.findAll();
+    return this.productService.findAll()
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -56,8 +56,8 @@ export class ProductController {
   @ApiOperation({ summary: 'Lista produtos da loja do admin autenticado' })
   @ApiResponse({ status: 200, description: 'Lista de produtos da loja', type: [Product] })
   async findByStore(@Req() req: Request): Promise<Product[]> {
-    const user = req.user as any;
-    return this.productService.findByStoreId(user.store?.id);
+    const user = req.user as any
+    return this.productService.findByStoreId(user.store?.id)
   }
 
   @Get(':id')
@@ -65,7 +65,7 @@ export class ProductController {
   @ApiParam({ name: 'id', type: Number, description: 'ID do produto' })
   @ApiResponse({ status: 200, description: 'Produto encontrado', type: Product })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Product> {
-    return this.productService.findOne(id);
+    return this.productService.findOne(id)
   }
 
   @Post()
@@ -85,6 +85,10 @@ export class ProductController {
         available: { type: 'boolean' },
         storeId: { type: 'number' },
         categoryId: { type: 'number' },
+        extraGroups: {
+          type: 'string',
+          description: 'Grupos de extras (formato JSON string)',
+        },
         file: { type: 'string', format: 'binary' },
       },
     },
@@ -92,11 +96,24 @@ export class ProductController {
   @ApiOperation({ summary: 'Cria um novo produto (Apenas ADMIN)' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(
-    @Body() createProductDto: CreateProductDto,
+    @Body() body: any,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<Product> {
     try {
-      return this.productService.create(createProductDto, file);
+      // ✅ Parse booleanos manualmente
+      body.available = body.available === 'true' || body.available === true;
+      body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
+  
+      // ✅ Parse seguro do extraGroups se for string
+      if (body.extraGroups && typeof body.extraGroups === 'string') {
+        try {
+          body.extraGroups = JSON.parse(body.extraGroups);
+        } catch {
+          throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
+        }
+      }
+  
+      return this.productService.create(body, file);
     } catch (error) {
       throw new HttpException(
         {
@@ -108,6 +125,7 @@ export class ProductController {
       );
     }
   }
+  
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -128,29 +146,47 @@ export class ProductController {
         available: { type: 'boolean' },
         storeId: { type: 'number' },
         categoryId: { type: 'number' },
+        extraGroups: {
+          type: 'string',
+          description: 'Grupos de extras (formato JSON string)',
+        },
         file: { type: 'string', format: 'binary' },
       },
     },
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateProductDto: UpdateProductDto,
-    @UploadedFile() file?: Express.Multer.File,
-  ): Promise<Product> {
-    try {
-      return this.productService.update(id, updateProductDto, file);
-    } catch (error) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: 'Erro ao atualizar produto',
-          message: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
+async update(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() body: any,
+  @UploadedFile() file?: Express.Multer.File,
+): Promise<Product> {
+  try {
+    // ✅ Parse booleanos manualmente
+    body.available = body.available === 'true' || body.available === true;
+    body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
+
+    // ✅ Parse seguro do extraGroups se for string
+    if (body.extraGroups && typeof body.extraGroups === 'string') {
+      try {
+        body.extraGroups = JSON.parse(body.extraGroups);
+      } catch {
+        throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
+      }
     }
+
+    return this.productService.update(id, body, file);
+  } catch (error) {
+    throw new HttpException(
+      {
+        status: HttpStatus.BAD_REQUEST,
+        error: 'Erro ao atualizar produto',
+        message: error.message,
+      },
+      HttpStatus.BAD_REQUEST,
+    );
   }
+}
+
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -161,7 +197,7 @@ export class ProductController {
   @ApiResponse({ status: 200, description: 'Produto removido com sucesso' })
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     try {
-      return this.productService.remove(id);
+      return this.productService.remove(id)
     } catch (error) {
       throw new HttpException(
         {
@@ -170,7 +206,7 @@ export class ProductController {
           message: error.message,
         },
         HttpStatus.BAD_REQUEST,
-      );
+      )
     }
   }
 }

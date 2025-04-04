@@ -9,7 +9,8 @@ import { Product } from './product.entity';
 import { Category } from '../category/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Stock } from '../stock/stock.entity'; 
+import { Stock } from '../stock/stock.entity';
+import { ProductExtraService } from '../product-extra/product-extra.service';
 import {
   S3Client,
   PutObjectCommand,
@@ -26,12 +27,14 @@ export class ProductService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    
+
     @InjectRepository(Stock)
     private readonly stockRepository: Repository<Stock>,
 
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+
+    private readonly productExtraService: ProductExtraService,
   ) {
     this.s3 = new S3Client({
       region: process.env.R2_REGION,
@@ -75,10 +78,8 @@ export class ProductService {
     file?: Express.Multer.File,
   ): Promise<Product> {
     const { categoryId, storeId, ...data } = createProductDto;
-  
     const product = this.productRepository.create(data);
-  
-    // ✅ Associa categoria, se informada
+
     if (categoryId) {
       const category = await this.categoryRepository.findOne({
         where: { id: categoryId },
@@ -86,8 +87,7 @@ export class ProductService {
       if (!category) throw new NotFoundException('Categoria não encontrada');
       product.category = category;
     }
-  
-    // ✅ Busca e associa a loja
+
     if (storeId) {
       const store = await this.productRepository.manager.findOne('Store', {
         where: { id: storeId },
@@ -97,11 +97,9 @@ export class ProductService {
     } else {
       throw new NotFoundException('StoreId é obrigatório');
     }
-  
-    // ✅ Upload da imagem (se existir)
+
     if (file) {
       const filename = `${uuidv4()}-${file.originalname.replace(/\s/g, '_')}`;
-  
       try {
         await this.s3.send(
           new PutObjectCommand({
@@ -117,10 +115,11 @@ export class ProductService {
         throw new InternalServerErrorException('Falha no upload da imagem');
       }
     }
-  
-    return this.productRepository.save(product);
+
+    const savedProduct = await this.productRepository.save(product);
+
+    return savedProduct;
   }
-  
 
   async update(
     id: number,
@@ -128,7 +127,6 @@ export class ProductService {
     file?: Express.Multer.File,
   ): Promise<Product> {
     const product = await this.productRepository.findOne({ where: { id } });
-
     if (!product) {
       throw new NotFoundException(`Produto com o ID ${id} não encontrado para atualização`);
     }
@@ -157,7 +155,6 @@ export class ProductService {
       }
 
       const filename = `${uuidv4()}-${file.originalname.replace(/\s/g, '_')}`;
-
       try {
         await this.s3.send(
           new PutObjectCommand({
@@ -176,7 +173,6 @@ export class ProductService {
 
     return this.productRepository.save(product);
   }
-
   async remove(id: number): Promise<void> {
     try {
       const product = await this.productRepository.findOne({ where: { id } });
@@ -185,36 +181,32 @@ export class ProductService {
         throw new NotFoundException(`Produto com o ID ${id} não encontrado para remoção`);
       }
   
-      console.log('🟢 Produto encontrado:', product);
+      await this.stockRepository.delete({ productId: id });
+      await this.productExtraService.removeAllGroupsByProductId(id);
   
-      // Tenta remover o estoque vinculado
-      const stockResult = await this.stockRepository.delete({ productId: id });
-      console.log('🗑️ Estoque deletado:', stockResult);
-  
-      // Remove imagem se existir
       if (product.imageId) {
         try {
-          console.log('🎯 Tentando remover imagem:', product.imageId);
           await this.s3.send(
             new DeleteObjectCommand({
               Bucket: this.bucket,
               Key: product.imageId,
             }),
           );
-          console.log('✅ Imagem removida do R2');
         } catch (err) {
-          console.error('⚠️ Erro ao remover imagem da R2:', err);
+          console.error('Erro ao remover imagem da R2:', err);
         }
       }
   
-      // Remove o produto
       await this.productRepository.remove(product);
-      console.log('✅ Produto removido com sucesso');
     } catch (error) {
-      console.error('❌ ERRO AO REMOVER PRODUTO:', error);
-      throw new InternalServerErrorException('Erro ao remover produto');
+      console.error('❌ Erro ao remover produto (detalhado):', error);
+      throw new InternalServerErrorException({
+        message: 'Erro ao remover produto',
+        originalError: error?.message || error,
+      });
     }
   }
   
-}
   
+  
+}

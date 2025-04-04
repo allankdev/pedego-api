@@ -1,16 +1,16 @@
-// src/product/product.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { Store } from '../store/store.entity';
 import { Category } from '../category/category.entity';
+import { ProductExtraGroup } from '../product-extra/product-extra-group.entity';
 
 @Entity()
 export class Product {
-
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -40,4 +40,9 @@ export class Product {
     onDelete: 'SET NULL',
   })
   category: Category;
+
+  @OneToMany(() => ProductExtraGroup, (group) => group.product, {
+    cascade: true,
+  })
+  extraGroups: ProductExtraGroup[];
 }
