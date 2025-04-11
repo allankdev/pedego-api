@@ -73,10 +73,7 @@ export class ProductService {
     return product;
   }
 
-  async create(
-    createProductDto: CreateProductDto,
-    file?: Express.Multer.File,
-  ): Promise<Product> {
+  async create(createProductDto: CreateProductDto, file?: Express.Multer.File): Promise<Product> {
     const { categoryId, storeId, ...data } = createProductDto;
     const product = this.productRepository.create(data);
 
@@ -117,6 +114,16 @@ export class ProductService {
     }
 
     const savedProduct = await this.productRepository.save(product);
+
+    // Criação do estoque
+    if (savedProduct.hasStockControl) {
+      const stock = this.stockRepository.create({
+        product: savedProduct,  // Atribuindo o produto diretamente
+        storeId: storeId,
+        quantity: 0,  // Inicialize com 0 ou o valor desejado
+      });
+      await this.stockRepository.save(stock);
+    }
 
     return savedProduct;
   }
@@ -173,17 +180,19 @@ export class ProductService {
 
     return this.productRepository.save(product);
   }
+
   async remove(id: number): Promise<void> {
     try {
       const product = await this.productRepository.findOne({ where: { id } });
-  
+
       if (!product) {
         throw new NotFoundException(`Produto com o ID ${id} não encontrado para remoção`);
       }
-  
-      await this.stockRepository.delete({ productId: id });
+
+      // Remover o estoque associado ao produto
+      await this.stockRepository.delete({ product: { id } }); // Correção do relacionamento 'product'
       await this.productExtraService.removeAllGroupsByProductId(id);
-  
+
       if (product.imageId) {
         try {
           await this.s3.send(
@@ -196,7 +205,7 @@ export class ProductService {
           console.error('Erro ao remover imagem da R2:', err);
         }
       }
-  
+
       await this.productRepository.remove(product);
     } catch (error) {
       console.error('❌ Erro ao remover produto (detalhado):', error);
@@ -206,7 +215,4 @@ export class ProductService {
       });
     }
   }
-  
-  
-  
 }

@@ -8,6 +8,7 @@ import {
 import { Store } from '../store/store.entity';
 import { Category } from '../category/category.entity';
 import { ProductExtraGroup } from '../product-extra/product-extra-group.entity';
+import { Stock } from '../stock/stock.entity'; // Importando Stock
 
 @Entity()
 export class Product {
@@ -32,6 +33,10 @@ export class Product {
   @Column({ default: false })
   hasStockControl: boolean;
 
+  // Quantidade de estoque (apenas se 'hasStockControl' for true)
+  @Column({ default: 0, nullable: true })
+  stockQuantity: number;  // Deixando `nullable` para permitir valores nulos quando não há controle de estoque.
+
   @ManyToOne(() => Store, (store) => store.products, { onDelete: 'CASCADE' })
   store: Store;
 
@@ -45,4 +50,8 @@ export class Product {
     cascade: true,
   })
   extraGroups: ProductExtraGroup[];
+
+  // Relacionamento com a entidade Stock
+  @OneToMany(() => Stock, (stock) => stock.product, { cascade: true })
+  stock: Stock[];
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Stock } from './stock.entity';
@@ -57,11 +57,22 @@ export class StockService {
 
   // Atualiza a quantidade de estoque e disponibilidade do produto
   async updateStock(productId: number, storeId: number, quantity: number): Promise<Stock> {
+    if (quantity < 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'A quantidade de estoque não pode ser negativa.',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const stock = await this.getStock(productId, storeId);
     stock.quantity = quantity;
 
     const updated = await this.stockRepository.save(stock);
 
+    // Atualizar a disponibilidade do produto
     await this.handleProductAvailability(productId, quantity);
 
     return updated;
@@ -71,6 +82,9 @@ export class StockService {
   async remove(productId: number, storeId: number): Promise<void> {
     const stock = await this.getStock(productId, storeId);
     await this.stockRepository.remove(stock);
+
+    // Atualizar a disponibilidade do produto ao remover o estoque
+    await this.handleProductAvailability(productId, 0);
   }
 
   // Verifica e atualiza a disponibilidade do produto com base no estoque
@@ -78,6 +92,7 @@ export class StockService {
     const product = await this.productRepository.findOne({ where: { id: productId } });
     if (!product) return;
 
+    // Se o produto tiver controle de estoque, atualize a disponibilidade
     if (product.hasStockControl) {
       const shouldBeAvailable = quantity > 0;
       if (product.available !== shouldBeAvailable) {

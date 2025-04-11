@@ -125,7 +125,6 @@ export class ProductController {
       );
     }
   }
-  
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -146,6 +145,7 @@ export class ProductController {
         available: { type: 'boolean' },
         storeId: { type: 'number' },
         categoryId: { type: 'number' },
+        removeImage: { type: 'string', enum: ['true', 'false'] },
         extraGroups: {
           type: 'string',
           description: 'Grupos de extras (formato JSON string)',
@@ -155,38 +155,41 @@ export class ProductController {
     },
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-async update(
-  @Param('id', ParseIntPipe) id: number,
-  @Body() body: any,
-  @UploadedFile() file?: Express.Multer.File,
-): Promise<Product> {
-  try {
-    // ✅ Parse booleanos manualmente
-    body.available = body.available === 'true' || body.available === true;
-    body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
-
-    // ✅ Parse seguro do extraGroups se for string
-    if (body.extraGroups && typeof body.extraGroups === 'string') {
-      try {
-        body.extraGroups = JSON.parse(body.extraGroups);
-      } catch {
-        throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<Product> {
+    try {
+      body.available = body.available === 'true' || body.available === true;
+      body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
+  
+      if (body.extraGroups && typeof body.extraGroups === 'string') {
+        try {
+          body.extraGroups = JSON.parse(body.extraGroups);
+        } catch {
+          throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
+        }
       }
+  
+      // ✅ Se a imagem foi removida no frontend e não foi enviada uma nova, limpar imageId
+      if (body.removeImage === 'true' && !file) {
+        body.imageId = null;
+      }
+  
+      return this.productService.update(id, body, file);
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: 'Erro ao atualizar produto',
+          message: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
-
-    return this.productService.update(id, body, file);
-  } catch (error) {
-    throw new HttpException(
-      {
-        status: HttpStatus.BAD_REQUEST,
-        error: 'Erro ao atualizar produto',
-        message: error.message,
-      },
-      HttpStatus.BAD_REQUEST,
-    );
   }
-}
-
+  
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

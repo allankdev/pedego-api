@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -19,6 +19,7 @@ export class CloudflareR2Service {
     });
   }
 
+  // Método para fazer o upload de arquivos
   async uploadFile(file: Express.Multer.File): Promise<{ url: string }> {
     const filename = `${uuidv4()}-${file.originalname.replace(/\s/g, '_')}`;
 
@@ -39,4 +40,32 @@ export class CloudflareR2Service {
       throw new InternalServerErrorException('Erro ao enviar imagem para o R2');
     }
   }
+
+  // Método para excluir um arquivo do Cloudflare R2
+// Método para excluir um arquivo do Cloudflare R2
+async deleteFile(filename: string): Promise<void> {
+  console.log(`\n🗑️  Tentando excluir o arquivo: "${filename}"`);
+
+  try {
+    const params = {
+      Bucket: this.bucket,
+      Key: filename,
+    };
+
+    console.log('🔍 Parâmetros enviados para o R2:');
+    console.log(`📦 Bucket: ${params.Bucket}`);
+    console.log(`📁 Key (nome do arquivo): ${params.Key}`);
+
+    const result = await this.s3.send(new DeleteObjectCommand(params));
+
+    console.log(`✅ Arquivo "${filename}" excluído com sucesso do bucket "${this.bucket}".`);
+    console.log('📄 Resultado da exclusão:', result);
+  } catch (error) {
+    console.error('❌ Erro ao excluir arquivo no R2:', error);
+    throw new InternalServerErrorException('Erro ao excluir arquivo do R2: ' + error.message);
+  }
+}
+
+
+
 }
