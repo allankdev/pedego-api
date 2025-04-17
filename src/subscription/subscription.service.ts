@@ -1,5 +1,4 @@
-// src/subscription/subscription.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription, SubscriptionStatus } from './subscription.entity';
@@ -39,7 +38,7 @@ export class SubscriptionService {
   async expireSubscription(userId: number): Promise<Subscription> {
     const subscription = await this.findByUserId(userId);
     if (!subscription) {
-      throw new Error(`Assinatura do usuário ${userId} não encontrada`);
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada`);
     }
 
     subscription.status = SubscriptionStatus.EXPIRED;
@@ -53,7 +52,7 @@ export class SubscriptionService {
   ): Promise<Subscription> {
     const subscription = await this.findByUserId(userId);
     if (!subscription) {
-      throw new Error(`Assinatura do usuário ${userId} não encontrada`);
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada`);
     }
 
     const newExpiration = new Date();

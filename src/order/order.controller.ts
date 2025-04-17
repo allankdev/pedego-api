@@ -89,14 +89,19 @@ export class OrderController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
+  @Put(':id/cancel')
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Remove um pedido (usuário ou admin)' })
+  @ApiOperation({ summary: 'Cancela um pedido (usuário ou admin)' })
   @ApiParam({ name: 'id', type: Number })
-  async removeOrder(@Param('id', ParseIntPipe) id: number, @Req() req: Request): Promise<void> {
+  async cancelOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<Order> {
     const user = req.user as any;
-    await this.orderService.removeOrder(id, user);
+    return await this.orderService.cancelOrder(id, user);
   }
+  
+
 
   @Get(':id')
   @ApiOperation({ summary: 'Consulta um pedido pelo ID (público)' })

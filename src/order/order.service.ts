@@ -11,6 +11,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { User } from '../user/user.entity';
 import { OrderItem } from './order-item.entity';
+import { OrderStatus } from './order.entity';
 import { Product } from '../product/product.entity';
 import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
@@ -179,22 +180,24 @@ export class OrderService {
     Object.assign(order, updateOrderDto);
     return await this.orderRepository.save(order);
   }
-
-  async removeOrder(id: number, user: { id: number; role: string }): Promise<void> {
+  async cancelOrder(id: number, user: { id: number; role: string }): Promise<Order> {
     const order = await this.findOne(id);
     const isAdmin = user.role === 'ADMIN';
     const isOwner = order.user?.id === user.id;
-
+  
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenException('Você não pode deletar este pedido.');
+      throw new ForbiddenException('Você não pode cancelar este pedido.');
     }
-
-    if (!isAdmin && order.status !== 'pendente') {
-      throw new BadRequestException('Você só pode cancelar pedidos com status pendente.');
+  
+    if (order.status !== OrderStatus.PENDENTE) {
+      throw new BadRequestException('Apenas pedidos pendentes podem ser cancelados.');
     }
-
-    await this.orderRepository.remove(order);
+  
+    order.status = OrderStatus.CANCELADO;
+    return await this.orderRepository.save(order);
   }
+  
+  
 
   async findByUserId(userId: number): Promise<Order[]> {
     return await this.orderRepository.find({

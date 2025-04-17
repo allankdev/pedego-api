@@ -7,18 +7,22 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 🍪 Habilita suporte a cookies
   app.use(cookieParser());
 
+  // Prefixo global para as rotas (ex: /api/auth)
   app.setGlobalPrefix('api');
 
+  // 🌐 CORS: permite frontend acessar com cookie
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    origin: 'http://localhost:4000',
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });
+  
 
-  // ✅ Ativa transformação de tipos no ValidationPipe
+  // ✅ Validação global com transformação automática de tipos
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -27,8 +31,10 @@ async function bootstrap() {
     }),
   );
 
+  // 📚 Swagger API docs
   setupSwagger(app);
 
+  // 🚀 Sobe o servidor na porta 3000
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 

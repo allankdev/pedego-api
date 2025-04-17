@@ -8,19 +8,22 @@ import {
   Get,
   UseGuards,
   Req,
-} from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dtos/login.dto';
-import { RegisterStoreDto } from './dtos/register-store.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common'
+import { AuthService } from './auth.service'
+import { LoginDto } from './dtos/login.dto'
+import { RegisterStoreDto } from './dtos/register-store.dto'
+import { JwtAuthGuard } from './jwt-auth.guard'
+
 import {
   ApiTags,
   ApiOperation,
   ApiBody,
   ApiResponse,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { Request } from 'express';
+} from '@nestjs/swagger'
+import { Request, Response } from 'express'
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -33,11 +36,14 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Loja registrada e trial iniciado' })
   @ApiResponse({ status: 400, description: 'Erro ao registrar loja' })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async registerAsStore(@Body() registerStoreDto: RegisterStoreDto) {
+  async registerAsStore(
+    @Body() registerStoreDto: RegisterStoreDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      return await this.authService.registerAsStore(registerStoreDto);
+      return await this.authService.registerAsStore(registerStoreDto, res)
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException(error.message)
     }
   }
 
@@ -47,33 +53,56 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
   @ApiResponse({ status: 400, description: 'Credenciais inválidas' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async login(@Body() loginDto: LoginDto) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      return await this.authService.login(loginDto.email, loginDto.password);
+      return await this.authService.login(loginDto.email, loginDto.password, res)
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException(error.message)
     }
   }
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout do usuário (limpa o cookie)' })
+  @ApiResponse({ status: 200, description: 'Logout efetuado com sucesso' })
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('token', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    })
+  
+    return { message: 'Logout efetuado com sucesso' }
+  }
+  
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Retorna o usuário autenticado com a loja (se ADMIN)' })
   @ApiBearerAuth()
-  async getProfile(@Req() req: Request) {
-    const user = req.user as any;
-    
-    // Retorna o usuário com as informações da loja, se presente
+  async getProfile(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response, // ✅ precisa disso para limpar cookie
+  ) {
+    const user = req.user as any
+  
     try {
-      const validatedUser = await this.authService.validateUserById(user.sub);
-      if (validatedUser.store) {
-        return {
-          user: validatedUser,
-          store: validatedUser.store,  // Incluir as informações da loja
-        };
+      const validatedUser = await this.authService.validateUserById(user.sub)
+  
+      if (!validatedUser) {
+        res.clearCookie('token') // 🔁 importante
+        throw new UnauthorizedException('Usuário inválido')
       }
-      return validatedUser;  // Se não houver loja associada ao usuário, retorna só os dados do usuário
+  
+      return validatedUser.store
+        ? { user: validatedUser, store: validatedUser.store }
+        : { user: validatedUser }
     } catch (error) {
-      throw new BadRequestException('Erro ao obter perfil do usuário');
+      res.clearCookie('token') // 🔁 limpa cookie mesmo se o erro for no try
+      throw new UnauthorizedException('Token inválido ou expirado')
     }
   }
+  
 }

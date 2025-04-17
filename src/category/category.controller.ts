@@ -46,22 +46,15 @@ export class CategoryController {
     return this.categoryService.create(storeId, dto, user);
   }
 
-  @Get(':storeId')
-  @ApiOperation({ summary: 'Listar categorias da loja' })
-  @ApiParam({ name: 'storeId', type: Number })
-  findAll(@Param('storeId', ParseIntPipe) storeId: number, @Req() req: Request) {
-    const user = req.user as any;
-    return this.categoryService.findAll(storeId, user);
-  }
 
   @Get('my-store')
   @ApiOperation({ summary: 'Listar categorias da loja do admin autenticado' })
   findMine(@Req() req: Request) {
     const user = req.user as any;
-    const storeId = user.store?.id;
+    const storeId = Number(user.store?.id); // 👈 cast garantido
     return this.categoryService.findAll(storeId, user);
   }
-
+  
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar categoria' })
   @ApiParam({ name: 'id', type: Number })

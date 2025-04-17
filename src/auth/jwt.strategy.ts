@@ -1,36 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, ExtractJwt } from 'passport-jwt';
-import * as dotenv from 'dotenv';
-import { UserService } from '../user/user.service';
-import { UnauthorizedException } from '@nestjs/common';
-
-
-dotenv.config();
+import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { PassportStrategy } from '@nestjs/passport'
+import { Strategy, ExtractJwt } from 'passport-jwt'
+import { Request } from 'express'
+import { UserService } from '../user/user.service'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly userService: UserService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req: Request) => {
+          const token = req.cookies?.token
+          console.log('📦 Cookie Token:', token)
+          return token
+        },
+      ]),
       secretOrKey: process.env.JWT_SECRET,
-    });
+    })
   }
 
   async validate(payload: any) {
-    // Verifique o que está sendo extraído do payload aqui
-    console.log('Payload JWT:', payload); // Verifique o payload do JWT
-
-    const user = await this.userService.findByIdWithStore(payload.sub);
+    console.log('🎯 Payload decodificado:', payload)
+  
+    const user = await this.userService.findByIdWithStore(payload.sub)
+  
     if (!user) {
-      throw new UnauthorizedException('Usuário não encontrado');
+      console.error('Usuário não encontrado com ID:', payload.sub)
+      throw new UnauthorizedException('Usuário não encontrado')
     }
-
-    // Retorna o usuário com a loja associada
+  
     return {
-      id: user.id,          // ID do usuário
-      role: user.role,      // Role do usuário
-      store: user.store,    // A loja associada ao usuário
-    };
+      sub: user.id, // 👈 precisa disso!
+      role: user.role,
+      storeId: user.store?.id,
+      store: user.store, // ainda pode manter se necessário
+    }
   }
+  
 }

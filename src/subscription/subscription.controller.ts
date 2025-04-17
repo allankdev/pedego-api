@@ -10,9 +10,11 @@ import {
   UsePipes,
   ValidationPipe,
   UseGuards,
-} from '@nestjs/common';
-import { SubscriptionService } from './subscription.service';
-import { Subscription } from './subscription.entity';
+  Request,
+  ForbiddenException,
+} from '@nestjs/common'
+import { SubscriptionService } from './subscription.service'
+import { Subscription } from './subscription.entity'
 import {
   ApiTags,
   ApiOperation,
@@ -20,11 +22,11 @@ import {
   ApiParam,
   ApiBody,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { UserRole } from '../user/enums/user-role.enum';
+} from '@nestjs/swagger'
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { RolesGuard } from '../auth/roles.guard'
+import { Roles } from '../auth/roles.decorator'
+import { UserRole } from '../user/enums/user-role.enum'
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth('access-token')
@@ -42,27 +44,39 @@ export class SubscriptionController {
     type: [Subscription],
   })
   async findAll(): Promise<Subscription[]> {
-    return this.subscriptionService.findAll();
+    return this.subscriptionService.findAll()
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Busca a assinatura do usuário autenticado' })
+  @ApiResponse({ status: 200, description: 'Assinatura encontrada com sucesso', type: Subscription })
+  async getMySubscription(@Request() req: any): Promise<Subscription> {
+    const userId = req.user.id
+    const subscription = await this.subscriptionService.findByUserId(userId)
+
+    if (!subscription) {
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`)
+    }
+
+    return subscription
   }
 
   @Get(':userId')
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Busca a assinatura de um usuário específico (SUPER_ADMIN)' })
   @ApiParam({ name: 'userId', type: Number, description: 'ID do usuário' })
-  @ApiResponse({
-    status: 200,
-    description: 'Assinatura encontrada com sucesso',
-    type: Subscription,
-  })
+  @ApiResponse({ status: 200, description: 'Assinatura encontrada com sucesso', type: Subscription })
   @ApiResponse({ status: 404, description: 'Assinatura não encontrada' })
   async findByUserId(
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<Subscription> {
-    const subscription = await this.subscriptionService.findByUserId(userId);
+    const subscription = await this.subscriptionService.findByUserId(userId)
+
     if (!subscription) {
-      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`);
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`)
     }
-    return subscription;
+
+    return subscription
   }
 
   @Put('check-expiration')
@@ -70,7 +84,7 @@ export class SubscriptionController {
   @ApiOperation({ summary: 'Verifica e atualiza o status de assinaturas expiradas (SUPER_ADMIN)' })
   @ApiResponse({ status: 200, description: 'Assinaturas expiradas foram marcadas como EXPIRED' })
   async checkAndExpireSubscriptions(): Promise<{ updated: number }> {
-    return this.subscriptionService.checkAndExpireSubscriptions();
+    return this.subscriptionService.checkAndExpireSubscriptions()
   }
 
   @Post('upgrade')
@@ -89,6 +103,6 @@ export class SubscriptionController {
   @ApiResponse({ status: 200, description: 'Assinatura atualizada com sucesso' })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
-    return this.subscriptionService.upgradeSubscription(body.userId, body.plan);
+    return this.subscriptionService.upgradeSubscription(body.userId, body.plan)
   }
 }
