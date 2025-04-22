@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
-import { PaymentMethod } from './dto/create-payment.dto';
+import { PaymentMethod, PaymentStatus } from './dto/create-payment.dto';
 
 @Entity()
 export class Payment {
@@ -15,6 +15,13 @@ export class Payment {
     enum: PaymentMethod,
   })
   paymentMethod: PaymentMethod;
+
+  @Column({
+    type: 'enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.PENDING,
+  })
+  status: PaymentStatus;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   paymentDate: Date;

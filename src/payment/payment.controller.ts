@@ -6,11 +6,11 @@ import {
   Delete,
   Body,
   Param,
+  Req,
+  UseGuards,
+  ParseIntPipe,
   UsePipes,
   ValidationPipe,
-  ParseIntPipe,
-  UseGuards,
-  Req,
   ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -22,8 +22,8 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBody,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -32,36 +32,51 @@ import { Roles } from '../auth/roles.decorator';
 @ApiTags('Payments')
 @ApiBearerAuth('access-token')
 @Controller('payments')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
+  // ✅ ROTA PÚBLICA
   @Post()
-  @Roles('CUSTOMER')
-  @ApiOperation({ summary: 'Cria um novo pagamento (apenas CUSTOMER)' })
+  @ApiOperation({ summary: 'Cria um novo pagamento (público)' })
   @ApiBody({ type: CreatePaymentDto })
-  @ApiResponse({ status: 201, description: 'Pagamento criado com sucesso', type: Payment })
+  @ApiResponse({
+    status: 201,
+    description: 'Pagamento criado com sucesso',
+    type: Payment,
+  })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async createPayment(
-    @Body() createPaymentDto: CreatePaymentDto,
-    @Req() req: Request,
-  ): Promise<Payment> {
-    const user = req.user as any;
-    // Se quiser garantir que o pedido é dele, precisaria buscar o pedido e verificar o dono.
+  async createPayment(@Body() createPaymentDto: CreatePaymentDto): Promise<Payment> {
     return this.paymentService.createPayment(createPaymentDto);
   }
 
+  // 🔒 ROTAS PROTEGIDAS COM JWT + ROLE
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get()
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Lista todos os pagamentos (somente ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Lista de pagamentos retornada com sucesso', type: [Payment] })
+  @ApiResponse({ status: 200, type: [Payment] })
   async getPayments(): Promise<Payment[]> {
     return this.paymentService.getPayments();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('my-store')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Lista os pagamentos da minha loja (somente ADMIN)' })
+  @ApiResponse({ status: 200, type: [Payment] })
+  async getPaymentsByStore(@Req() req: Request): Promise<Payment[]> {
+    const user = req.user as any;
+    if (!user?.store?.id) {
+      throw new ForbiddenException('Loja não encontrada no token do usuário');
+    }
+    return this.paymentService.getPaymentsByStore(user.store.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Busca um pagamento por ID (ADMIN ou dono do pedido)' })
-  @ApiResponse({ status: 200, description: 'Pagamento encontrado com sucesso', type: Payment })
+  @ApiResponse({ status: 200, type: Payment })
   async getPaymentById(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
@@ -76,11 +91,12 @@ export class PaymentController {
     return payment;
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Put(':id')
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'Atualiza os dados de um pagamento existente (somente ADMIN)' })
+  @ApiOperation({ summary: 'Atualiza os dados de um pagamento (somente ADMIN)' })
   @ApiBody({ type: UpdatePaymentDto })
-  @ApiResponse({ status: 200, description: 'Pagamento atualizado com sucesso', type: Payment })
+  @ApiResponse({ status: 200, type: Payment })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async updatePayment(
     @Param('id', ParseIntPipe) id: number,
@@ -89,6 +105,16 @@ export class PaymentController {
     return this.paymentService.updatePayment(id, updatePaymentDto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Put(':id/cancel')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Cancela um pagamento (somente ADMIN)' })
+  @ApiResponse({ status: 200, type: Payment })
+  async cancelPayment(@Param('id', ParseIntPipe) id: number): Promise<Payment> {
+    return this.paymentService.cancelPayment(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Remove um pagamento (somente ADMIN)' })
