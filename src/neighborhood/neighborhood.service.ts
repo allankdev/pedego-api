@@ -71,4 +71,20 @@ export class NeighborhoodService {
     await this.neighborhoodRepo.remove(neighborhood);
     return { message: 'Bairro removido com sucesso' };
   }
+
+  async toggleActive(id: number, active: boolean, user: any) {
+    const neighborhood = await this.neighborhoodRepo.findOne({
+      where: { id },
+      relations: ['store'],
+    });
+  
+    if (!neighborhood) throw new NotFoundException('Bairro não encontrado');
+    if (user.role !== 'ADMIN' || user.store?.id !== neighborhood.store.id) {
+      throw new ForbiddenException('Você não tem permissão para alterar este bairro');
+    }
+  
+    neighborhood.active = active;
+    return this.neighborhoodRepo.save(neighborhood);
+  }
+  
 }

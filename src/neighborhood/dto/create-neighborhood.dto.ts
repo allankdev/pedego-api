@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateNeighborhoodDto {
@@ -17,4 +17,14 @@ export class CreateNeighborhoodDto {
   @IsNumber()
   @Min(0)
   deliveryFee: number;
+
+  @ApiProperty({
+    example: true,
+    description: 'Se o bairro está ativo ou não',
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

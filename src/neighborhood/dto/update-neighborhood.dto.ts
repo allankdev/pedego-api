@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, IsBoolean } from 'class-validator';
 
 export class UpdateNeighborhoodDto {
   @IsOptional()
@@ -9,4 +9,8 @@ export class UpdateNeighborhoodDto {
   @IsNumber()
   @Min(0)
   deliveryFee?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

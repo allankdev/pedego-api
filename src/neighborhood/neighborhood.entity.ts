@@ -1,4 +1,3 @@
-// src/neighborhood/neighborhood.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Store } from '../store/store.entity';
 
@@ -12,6 +11,9 @@ export class Neighborhood {
 
   @Column('decimal', { precision: 10, scale: 2 }) // taxa de entrega
   deliveryFee: number;
+
+  @Column({ default: true })
+  active: boolean;
 
   @ManyToOne(() => Store, (store) => store.neighborhoods, { onDelete: 'CASCADE' })
   store: Store;
