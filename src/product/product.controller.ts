@@ -68,6 +68,15 @@ export class ProductController {
     return this.productService.findOne(id)
   }
 
+  @Get('store/:storeId')
+@ApiOperation({ summary: 'Lista produtos disponíveis de uma loja (público)' })
+@ApiParam({ name: 'storeId', type: Number, description: 'ID da loja' })
+@ApiResponse({ status: 200, description: 'Produtos da loja retornados com sucesso', type: [Product] })
+async findPublicByStoreId(@Param('storeId', ParseIntPipe) storeId: number): Promise<Product[]> {
+  return this.productService.findPublicByStoreId(storeId)
+}
+
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

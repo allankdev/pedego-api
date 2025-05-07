@@ -1,4 +1,3 @@
-// PATCH /stores/:subdomain/avatar
 import {
   Controller,
   Get,
@@ -17,6 +16,7 @@ import {
   UploadedFile,
   UseInterceptors,
   ForbiddenException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,6 +26,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiConsumes,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { StoreService } from './store.service';
 import { CreateStoreDto } from './dto/create-store.dto';
@@ -123,18 +124,42 @@ export class StoreController {
     return await this.storeService.updateAvatar(subdomain, user, file);
   }
 
+  @Patch(':subdomain/cover')
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Atualiza apenas a capa da loja' })
+  @ApiParam({ name: 'subdomain', type: String })
+  async updateCover(
+    @Param('subdomain') subdomain: string,
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const user = req.user;
+
+    if (!user.store || user.store.subdomain !== subdomain) {
+      throw new ForbiddenException('Você não tem permissão para atualizar esta loja.');
+    }
+
+    if (!file) {
+      throw new BadRequestException('Nenhuma imagem enviada');
+    }
+
+    return await this.storeService.updateCover(subdomain, user, file);
+  }
+
   @Patch(':subdomain/toggle-open')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Alterna status da loja (aberta/fechada)' })
+  @ApiOperation({ summary: 'Altera status da loja manualmente ou volta para modo automático' })
   @ApiParam({ name: 'subdomain', type: String })
-  async toggleOpen(@Param('subdomain') subdomain: string, @Req() req: Request) {
+  @ApiQuery({ name: 'auto', required: false, type: Boolean })
+  async toggleStoreStatus(
+    @Param('subdomain') subdomain: string,
+    @Query('auto') auto: boolean, // Alterado para boolean
+    @Req() req: Request,
+  ) {
     const user = req.user as any;
-
-    try {
-      return await this.storeService.toggleOpen(subdomain, user);
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+    return await this.storeService.toggleOpen(subdomain, user, auto);
   }
 
   @Delete(':subdomain')

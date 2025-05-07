@@ -1,4 +1,3 @@
-// src/opening-hour/opening-hour.controller.ts
 import {
   Controller,
   Post,
@@ -18,6 +17,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../user/enums/user-role.enum';
+import { Public } from '../auth/public.decorator';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -27,14 +27,14 @@ import {
 import { Request } from 'express';
 
 @ApiTags('Opening Hours')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 @Controller('opening-hours')
 export class OpeningHourController {
   constructor(private readonly service: OpeningHourService) {}
 
   @Post(':storeId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Criar horário de funcionamento' })
   @ApiParam({ name: 'storeId', type: Number })
   create(
@@ -47,17 +47,19 @@ export class OpeningHourController {
   }
 
   @Get(':storeId')
-  @ApiOperation({ summary: 'Listar horários da loja' })
+  @Public()
+  @ApiOperation({ summary: 'Listar horários da loja (público)' })
   @ApiParam({ name: 'storeId', type: Number })
   findAll(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
-    return this.service.findAll(storeId, user);
+    return this.service.findAll(storeId);
   }
 
   @Get('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Listar horários da loja do usuário autenticado' })
   findMyOpeningHours(@Req() req: Request) {
     const user = req.user as any;
@@ -65,10 +67,13 @@ export class OpeningHourController {
     if (!storeId) {
       throw new Error('Loja não encontrada para o usuário');
     }
-    return this.service.findAll(storeId, user);
+    return this.service.findAllForAuthenticated(storeId, user); // 🔥 CHAMANDO O CERTO AQUI
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Atualizar horário de funcionamento' })
   @ApiParam({ name: 'id', type: Number })
   update(
@@ -81,6 +86,9 @@ export class OpeningHourController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Remover horário de funcionamento' })
   @ApiParam({ name: 'id', type: Number })
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {

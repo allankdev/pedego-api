@@ -1,4 +1,3 @@
-// src/category/category.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -36,7 +35,22 @@ export class CategoryService {
     return await this.categoryRepository.save(category);
   }
 
-  async findAll(storeId: number, user: any) {
+  // 🔥 findAll agora é público
+  async findAll(storeId: number) {
+    const store = await this.storeRepository.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Loja não encontrada');
+
+    return this.categoryRepository.find({
+      where: { store: { id: storeId } },
+      order: { name: 'ASC' },
+    });
+  }
+
+  // 🔥 findAll para admin autenticado (GET /my-store)
+  async findAllForAuthenticated(storeId: number, user: any) {
+    const store = await this.storeRepository.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Loja não encontrada');
+
     if (user.role !== 'ADMIN' || user.store?.id !== storeId) {
       throw new ForbiddenException('Acesso negado à loja');
     }

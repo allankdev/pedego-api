@@ -48,7 +48,6 @@ export class CreateStoreDto {
   country?: string;
 
   @ApiProperty({
-    
     example: 'entrega',
     enum: ['entrega', 'retirada', 'ambos'],
     required: false,
@@ -61,6 +60,11 @@ export class CreateStoreDto {
   @IsOptional()
   @IsBoolean()
   isOpen?: boolean;
+
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  manualOverride?: boolean;
 
   @ApiProperty({ example: '30-45 min', required: false })
   @IsOptional()
@@ -87,8 +91,6 @@ export class CreateStoreDto {
   @IsBoolean()
   autoPrint?: boolean;
 
-
-  @IsOptional()
   @ApiProperty({
     example: ['pix', 'dinheiro', 'cartão de crédito'],
     description: 'Formas de pagamento aceitas',
@@ -97,7 +99,56 @@ export class CreateStoreDto {
   })
   @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()  // Garante que o array de formas de pagamento não esteja vazio
+  @ArrayNotEmpty()
   @IsString({ each: true })
   paymentMethods?: string[];
+
+  @ApiProperty({ example: 'avatar_image_id', required: false })
+  @IsOptional()
+  @IsString()
+  avatarImageId?: string;
+
+  @ApiProperty({ example: 'cover_image_id', required: false })
+  @IsOptional()
+  @IsString()
+  coverImageId?: string;
+
+  // --- NOVOS CAMPOS DE ENDEREÇO ---
+
+  @ApiProperty({ example: 'Rua das Flores', required: false })
+  @IsOptional()
+  @IsString()
+  street?: string;
+
+  @ApiProperty({ example: '123', required: false })
+  @IsOptional()
+  @IsString()
+  number?: string;
+
+  @ApiProperty({ example: 'Sala 4', required: false })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @ApiProperty({ example: 'Centro', required: false })
+  @IsOptional()
+  @IsString()
+  neighborhood?: string;
+
+  @ApiProperty({ example: 'São Paulo', required: false })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiProperty({ example: 'SP', required: false })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiProperty({ example: '01000-000', required: false })
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
+
+  // -----------------------------------
 }

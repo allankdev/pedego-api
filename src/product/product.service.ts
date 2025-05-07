@@ -215,4 +215,16 @@ export class ProductService {
       });
     }
   }
+
+  async findPublicByStoreId(storeId: number): Promise<Product[]> {
+    return this.productRepository.find({
+      where: {
+        store: { id: storeId },
+        available: true,
+      },
+      relations: ['category', 'store'], // se necessário
+      order: { id: 'DESC' },
+    })
+  }
+  
 }

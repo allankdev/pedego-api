@@ -1,4 +1,3 @@
-// src/category/category.controller.ts
 import {
   Controller,
   Post,
@@ -18,6 +17,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../user/enums/user-role.enum';
 import { RolesGuard } from '../auth/roles.guard';
+import { Public } from '../auth/public.decorator'; // 🔥 Importa aqui também
 import { Request } from 'express';
 import {
   ApiBearerAuth,
@@ -27,14 +27,14 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Categories')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post(':storeId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Criar nova categoria' })
   @ApiParam({ name: 'storeId', type: Number })
   create(
@@ -46,16 +46,31 @@ export class CategoryController {
     return this.categoryService.create(storeId, dto, user);
   }
 
+  @Get(':storeId')
+  @Public() // 🔥 Liberar o GET público para qualquer visitante
+  @ApiOperation({ summary: 'Listar categorias da loja (público)' })
+  @ApiParam({ name: 'storeId', type: Number })
+  findAll(
+    @Param('storeId', ParseIntPipe) storeId: number,
+  ) {
+    return this.categoryService.findAll(storeId);
+  }
 
   @Get('my-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Listar categorias da loja do admin autenticado' })
   findMine(@Req() req: Request) {
     const user = req.user as any;
-    const storeId = Number(user.store?.id); // 👈 cast garantido
-    return this.categoryService.findAll(storeId, user);
+    const storeId = Number(user.store?.id);
+    return this.categoryService.findAllForAuthenticated(storeId, user);
   }
   
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Atualizar categoria' })
   @ApiParam({ name: 'id', type: Number })
   update(
@@ -68,6 +83,9 @@ export class CategoryController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Remover categoria' })
   @ApiParam({ name: 'id', type: Number })
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {

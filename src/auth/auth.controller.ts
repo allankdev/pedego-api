@@ -14,6 +14,7 @@ import {
 import { AuthService } from './auth.service'
 import { LoginDto } from './dtos/login.dto'
 import { RegisterStoreDto } from './dtos/register-store.dto'
+import { ChangePasswordDto } from './dtos/change-password.dto'
 import { JwtAuthGuard } from './jwt-auth.guard'
 
 import {
@@ -63,6 +64,7 @@ export class AuthController {
       throw new BadRequestException(error.message)
     }
   }
+
   @Post('logout')
   @ApiOperation({ summary: 'Logout do usuário (limpa o cookie)' })
   @ApiResponse({ status: 200, description: 'Logout efetuado com sucesso' })
@@ -73,10 +75,9 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       path: '/',
     })
-  
+
     return { message: 'Logout efetuado com sucesso' }
   }
-  
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -84,25 +85,44 @@ export class AuthController {
   @ApiBearerAuth()
   async getProfile(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response, // ✅ precisa disso para limpar cookie
+    @Res({ passthrough: true }) res: Response,
   ) {
     const user = req.user as any
-  
+
     try {
       const validatedUser = await this.authService.validateUserById(user.sub)
-  
+
       if (!validatedUser) {
-        res.clearCookie('token') // 🔁 importante
+        res.clearCookie('token')
         throw new UnauthorizedException('Usuário inválido')
       }
-  
+
       return validatedUser.store
         ? { user: validatedUser, store: validatedUser.store }
         : { user: validatedUser }
     } catch (error) {
-      res.clearCookie('token') // 🔁 limpa cookie mesmo se o erro for no try
+      res.clearCookie('token')
       throw new UnauthorizedException('Token inválido ou expirado')
     }
   }
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @ApiOperation({ summary: 'Altera a senha do usuário autenticado e faz logout' })
+  @ApiBearerAuth()
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = req.user as any
+    const result = await this.authService.changePassword(
+      user.sub,
+      dto.currentPassword,
+      dto.newPassword,
+      res,
+    )
   
+    return result
+  }
 }

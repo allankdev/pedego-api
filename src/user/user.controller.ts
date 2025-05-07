@@ -1,3 +1,4 @@
+// src/user/user.controller.ts
 import {
   Controller,
   Get,
@@ -53,38 +54,36 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Lista de usuários', type: [User] })
   async findAll(@Req() req: Request) {
     const user = req.user as any;
-    // Certifique-se de que o `req.user` contém a role e id corretamente
-    console.log(user);  // Adicione um log para verificar o conteúdo de `req.user`
-  
+    console.log(user);
     return this.userService.findAll();
   }
-  
+
   @Get('phone/:phone')
-  @ApiOperation({ summary: 'Busca um usuário pelo telefone (público)' })
-  @ApiResponse({ status: 200, description: 'Usuário encontrado' })
+  @ApiOperation({ summary: 'Busca um usuário pelo telefone (e último bairro)' })
+  @ApiResponse({ status: 200, description: 'Usuário encontrado com bairro' })
   async findByPhone(@Param('phone') phone: string) {
-    return this.userService.findByPhone(phone);
+    return this.userService.findByPhoneWithLastNeighborhood(phone);
   }
 
-// user.controller.ts
-@Get(':id')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@ApiOperation({ summary: 'Busca um usuário pelo ID' })
-async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-  const user = req.user as any;
-
-  if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
-    throw new ForbiddenException('Acesso negado');
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Busca um usuário pelo ID' })
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    const user = req.user as any;
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
+      throw new ForbiddenException('Acesso negado');
+    }
+    return this.userService.findByIdWithStore(id);
   }
-
-  return this.userService.findByIdWithStore(id);
-}
-
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Atualiza um usuário' })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto, @Req() req: Request) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
+    @Req() req: Request,
+  ) {
     const user = req.user as any;
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.id !== id) {
       throw new ForbiddenException('Acesso negado');

@@ -17,6 +17,7 @@ import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Stock } from '../stock/stock.entity';
 import { ProductExtra } from '../product-extra/product-extra.entity';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class OrderService {
@@ -44,15 +45,24 @@ export class OrderService {
 
     @InjectRepository(ProductExtra)
     private productExtraRepository: Repository<ProductExtra>,
+
+    private readonly userService: UserService, // 👈 necessário para criar cliente automaticamente
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
-    const { items, storeId, neighborhoodId, deliveryType, ...orderData } = createOrderDto;
+    const { items, storeId, neighborhoodId, deliveryType, customerName, customerPhone, customerAddress, ...rest } = createOrderDto;
 
     let user: User | null = null;
+
     if (createOrderDto.userId) {
       user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
       if (!user) throw new NotFoundException('Usuário não encontrado');
+    } else {
+      user = await this.userService.create({
+        name: customerName,
+        phone: customerPhone,
+        address: customerAddress,
+      });
     }
 
     const store = await this.storeRepository.findOne({ where: { id: storeId } });
@@ -65,7 +75,6 @@ export class OrderService {
       const product = await this.productRepository.findOne({ where: { id: item.productId } });
       if (!product) throw new NotFoundException(`Produto ${item.productId} não encontrado`);
 
-      // Controle de estoque (se necessário)
       if (product.hasStockControl) {
         const stock = await this.stockRepository.findOne({
           where: { productId: product.id, storeId: store.id },
@@ -84,12 +93,10 @@ export class OrderService {
         }
       }
 
-      // Buscar e somar extras
       const extras = item.extraIds?.length
         ? await this.productExtraRepository.find({ where: { id: In(item.extraIds) } })
         : [];
 
-      // Soma total do produto + extras
       total += Number(product.price) * item.quantity;
       for (const extra of extras) {
         total += Number(extra.price) * item.quantity;
@@ -112,8 +119,11 @@ export class OrderService {
     }
 
     const order = this.orderRepository.create({
-      ...orderData,
-      user: user || null,
+      ...rest,
+      customerName,
+      customerPhone,
+      customerAddress,
+      user,
       store,
       total,
       items: orderItems,
@@ -148,7 +158,14 @@ export class OrderService {
     const where = user.role === 'ADMIN' ? {} : { user: { id: user.id } };
     return await this.orderRepository.find({
       where,
-      relations: ['user', 'payment', 'items', 'items.product', 'items.extras'],
+      relations: [
+        'user',
+        'payment',
+        'items',
+        'items.product',
+        'items.extras',
+        'neighborhood',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -160,7 +177,14 @@ export class OrderService {
 
     return await this.orderRepository.find({
       where: { store: { id: user.store.id } },
-      relations: ['user', 'payment', 'items', 'items.product', 'items.extras'],
+      relations: [
+        'user',
+        'payment',
+        'items',
+        'items.product',
+        'items.extras',
+        'neighborhood',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -168,7 +192,14 @@ export class OrderService {
   async findOne(id: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['user', 'payment', 'items', 'items.product', 'items.extras'],
+      relations: [
+        'user',
+        'payment',
+        'items',
+        'items.product',
+        'items.extras',
+        'neighborhood',
+      ],
     });
 
     if (!order) throw new NotFoundException('Pedido não encontrado');
@@ -180,29 +211,35 @@ export class OrderService {
     Object.assign(order, updateOrderDto);
     return await this.orderRepository.save(order);
   }
+
   async cancelOrder(id: number, user: { id: number; role: string }): Promise<Order> {
     const order = await this.findOne(id);
     const isAdmin = user.role === 'ADMIN';
     const isOwner = order.user?.id === user.id;
-  
+
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException('Você não pode cancelar este pedido.');
     }
-  
+
     if (order.status !== OrderStatus.PENDENTE) {
       throw new BadRequestException('Apenas pedidos pendentes podem ser cancelados.');
     }
-  
+
     order.status = OrderStatus.CANCELADO;
     return await this.orderRepository.save(order);
   }
-  
-  
 
   async findByUserId(userId: number): Promise<Order[]> {
     return await this.orderRepository.find({
       where: { user: { id: userId } },
-      relations: ['user', 'payment', 'items', 'items.product', 'items.extras'],
+      relations: [
+        'user',
+        'payment',
+        'items',
+        'items.product',
+        'items.extras',
+        'neighborhood',
+      ],
       order: { createdAt: 'DESC' },
     });
   }

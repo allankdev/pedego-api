@@ -1,4 +1,3 @@
-// src/neighborhood/neighborhood.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -31,13 +30,13 @@ export class NeighborhoodService {
     return this.neighborhoodRepo.save(neighborhood);
   }
 
-  async findAll(storeId: number, user: any) {
-    if (user.role !== 'ADMIN' || user.store?.id !== storeId) {
-      throw new ForbiddenException('Você não tem acesso a esta loja');
-    }
+  // 🔥 findAll agora é público
+  async findAll(storeId: number) {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Loja não encontrada');
 
     return this.neighborhoodRepo.find({
-      where: { store: { id: storeId } },
+      where: { store: { id: storeId }, active: true }, // Só bairros ativos, se quiser
       order: { name: 'ASC' },
     });
   }
@@ -77,14 +76,13 @@ export class NeighborhoodService {
       where: { id },
       relations: ['store'],
     });
-  
+
     if (!neighborhood) throw new NotFoundException('Bairro não encontrado');
     if (user.role !== 'ADMIN' || user.store?.id !== neighborhood.store.id) {
       throw new ForbiddenException('Você não tem permissão para alterar este bairro');
     }
-  
+
     neighborhood.active = active;
     return this.neighborhoodRepo.save(neighborhood);
   }
-  
 }

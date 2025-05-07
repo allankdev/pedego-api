@@ -6,10 +6,11 @@ import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { User } from '../user/user.entity';
 import { Product } from '../product/product.entity';
-import { Store } from '../store/store.entity'; 
+import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Stock } from '../stock/stock.entity';
-import { ProductExtraModule } from '../product-extra/product-extra.module'; // ✅ Importado para uso de repositório ou service
+import { ProductExtraModule } from '../product-extra/product-extra.module';
+import { UserModule } from '../user/user.module'; // ✅ necessário para injetar UserService
 
 @Module({
   imports: [
@@ -22,10 +23,10 @@ import { ProductExtraModule } from '../product-extra/product-extra.module'; // �
       Neighborhood,
       Stock,
     ]),
-    ProductExtraModule, // ✅ necessário para ProductExtraRepository ou ProductExtraService
+    ProductExtraModule,
+    UserModule, // ✅ aqui estava faltando
   ],
   controllers: [OrderController],
   providers: [OrderService],
 })
-export class
-OrderModule {}
+export class OrderModule {}

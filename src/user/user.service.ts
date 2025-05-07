@@ -1,3 +1,4 @@
+// src/user/user.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,12 +14,10 @@ export class UserService {
 
   // Cria ou retorna usuário existente com base no telefone (para clientes)
   async create(userData: Partial<User>): Promise<User> {
-    // Se o telefone for fornecido, verifica se já existe um usuário com esse telefone
     if (userData.phone) {
       const existingUser = await this.userRepository.findOne({
         where: { phone: userData.phone },
       });
-
       if (existingUser) return existingUser;
     }
 
@@ -35,13 +34,44 @@ export class UserService {
     return user;
   }
 
-  // Buscar usuário por telefone (para checkout, clientes)
+  // Buscar usuário por telefone (apenas usuário simples, usado internamente)
   async findByPhone(phone: string): Promise<User> {
     const user = await this.userRepository.findOne({ where: { phone } });
     if (!user) {
       throw new NotFoundException(`Usuário com telefone ${phone} não encontrado`);
     }
     return user;
+  }
+
+  // 🔥 Buscar usuário por telefone + último bairro
+  async findByPhoneWithLastNeighborhood(phone: string): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { phone },
+      relations: ['orders', 'orders.neighborhood'],
+      order: { id: 'DESC' }, // pega o mais novo pelo ID se quiser mais segurança
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Usuário com telefone ${phone} não encontrado`);
+    }
+
+    // Pega o último pedido do usuário (se houver)
+    const lastOrder = user.orders?.[0];
+
+    return {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      address: user.address,
+      lastNeighborhood: lastOrder?.neighborhood
+        ? {
+            id: lastOrder.neighborhood.id,
+            name: lastOrder.neighborhood.name,
+            deliveryFee: lastOrder.neighborhood.deliveryFee,
+          }
+        : null,
+    };
   }
 
   // Buscar todos os usuários
@@ -62,35 +92,32 @@ export class UserService {
     await this.userRepository.remove(user);
   }
 
-  // Buscar usuário por e-mail (apenas para ADMIN, lojas)
+  // Buscar usuário por e-mail (usado em login de loja)
   async findByEmail(email: string): Promise<User | undefined> {
     return this.userRepository.findOne({ where: { email } });
   }
 
-  // user.service.ts
   async findByIdWithStore(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['store'],
     });
-  
+
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
     }
-  
+
     return user;
   }
 
   async findByEmailWithStore(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
-      relations: ['store'], // Carrega a loja junto
+      relations: ['store'],
     });
-
   }
+
   async save(user: User): Promise<User> {
     return await this.userRepository.save(user);
   }
-    
-
 }

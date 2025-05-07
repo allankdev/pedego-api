@@ -10,14 +10,10 @@ import { Category } from '../category/category.entity';
 import { OpeningHour } from '../opening-hour/opening-hour.entity';
 import { User } from '../user/user.entity'; 
 import { Order } from '../order/order.entity';
-import { Stock } from '../stock/stock.entity'; // ✅ IMPORTAÇÃO ADICIONADA
+import { Stock } from '../stock/stock.entity';
 
 @Entity()
 export class Store {
-
-  @Column({ nullable: true })
-  avatarImageId?: string;
-  
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -50,6 +46,9 @@ export class Store {
   isOpen: boolean;
 
   @Column({ default: false })
+  manualOverride: boolean;
+
+  @Column({ default: false })
   autoPrint: boolean;
 
   @Column({ nullable: true })
@@ -57,9 +56,6 @@ export class Store {
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   minOrderValue: number;
-
-  @OneToMany(() => Order, (order) => order.store) 
-  orders: Order[];
 
   @Column({ default: 'medium' })
   printFontSize: string;
@@ -69,6 +65,35 @@ export class Store {
 
   @Column('text', { array: true, default: () => 'ARRAY[]::text[]' })
   paymentMethods: string[];
+
+  @Column({ nullable: true })
+  avatarImageId?: string;
+
+  @Column({ nullable: true })
+  coverImageId?: string;
+
+  // --- ENDEREÇO ---
+  @Column({ nullable: true })
+  street: string;
+
+  @Column({ nullable: true })
+  number: string;
+
+  @Column({ nullable: true })
+  complement: string;
+
+  @Column({ nullable: true })
+  neighborhood: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
+  zipCode: string;
+  // ----------------
 
   @OneToMany(() => Product, (product) => product.store)
   products: Product[];
@@ -85,7 +110,9 @@ export class Store {
   @OneToMany(() => User, (user) => user.store)
   users: User[];
 
-  // Relacionamento com Stock - Agora você tem um relacionamento bidirecional
+  @OneToMany(() => Order, (order) => order.store) 
+  orders: Order[];
+
   @OneToMany(() => Stock, (stock) => stock.store)
-  stocks: Stock[];  // Relacionamento com o estoque
+  stocks: Stock[];
 }

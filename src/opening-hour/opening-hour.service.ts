@@ -1,4 +1,3 @@
-// src/opening-hour/opening-hour.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -30,10 +29,26 @@ export class OpeningHourService {
     }
 
     const hour = this.openingHourRepo.create({ ...dto, store });
-    return this.openingHourRepo.save(hour);
+    const saved = await this.openingHourRepo.save(hour);
+
+    await this.reevaluateStoreOpenStatus(store);
+    return saved;
   }
 
-  async findAll(storeId: number, user: any) {
+  async findAll(storeId: number) {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Loja não encontrada');
+
+    const horas = await this.openingHourRepo.find({
+      where: { store: { id: storeId } },
+    });
+
+    const diaOrdem = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+    return horas.sort((a, b) => diaOrdem.indexOf(a.day) - diaOrdem.indexOf(b.day));
+  }
+
+  async findAllForAuthenticated(storeId: number, user: any) {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Loja não encontrada');
 
@@ -45,7 +60,6 @@ export class OpeningHourService {
       where: { store: { id: storeId } },
     });
 
-    // Ordenar manualmente com base nos dias da semana
     const diaOrdem = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
     return horas.sort((a, b) => diaOrdem.indexOf(a.day) - diaOrdem.indexOf(b.day));
@@ -64,7 +78,10 @@ export class OpeningHourService {
     }
 
     Object.assign(hour, dto);
-    return this.openingHourRepo.save(hour);
+    const saved = await this.openingHourRepo.save(hour);
+
+    await this.reevaluateStoreOpenStatus(hour.store);
+    return saved;
   }
 
   async remove(id: number, user: any) {
@@ -79,6 +96,27 @@ export class OpeningHourService {
       throw new ForbiddenException('Acesso negado à exclusão de horário.');
     }
 
-    return this.openingHourRepo.remove(hour);
+    await this.openingHourRepo.remove(hour);
+    await this.reevaluateStoreOpenStatus(hour.store);
   }
+
+  // 🔁 Atualiza automaticamente o status da loja com base nos horários
+  private async reevaluateStoreOpenStatus(store: Store) {
+    if (store.manualOverride) return; // 👉 Não atualiza se estiver em modo manual
+  
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:mm
+  
+    const hours = await this.openingHourRepo.find({ where: { store: { id: store.id } } });
+    const today = hours.find(h => h.day.toLowerCase() === currentDay);
+  
+    const isOpen = today ? today.open <= currentTime && currentTime <= today.close : false;
+  
+    if (store.isOpen !== isOpen) {
+      store.isOpen = isOpen;
+      await this.storeRepo.save(store);
+    }
+  }
+  
 }

@@ -1,3 +1,4 @@
+// src/user/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
 import { Order } from '../order/order.entity';
 import { Coupon } from '../coupon/coupon.entity';
@@ -27,6 +28,10 @@ export class User {
     default: UserRole.CUSTOMER,
   })
   role: UserRole;
+
+  // 🔥 Novo campo: address (endereço do usuário)
+  @Column({ nullable: true })
+  address?: string;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];

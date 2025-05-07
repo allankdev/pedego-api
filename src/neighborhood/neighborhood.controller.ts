@@ -17,18 +17,19 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { Roles } from '../auth/roles.decorator'
 import { RolesGuard } from '../auth/roles.guard'
 import { UserRole } from '../user/enums/user-role.enum'
+import { Public } from '../auth/public.decorator' // IMPORTA Public para liberar
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger'
 import { Request } from 'express'
 
 @ApiTags('Neighborhoods')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 @Controller('neighborhoods')
 export class NeighborhoodController {
   constructor(private readonly service: NeighborhoodService) {}
 
   @Post(':storeId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Criar novo bairro' })
   @ApiParam({ name: 'storeId', type: Number })
   create(
@@ -41,14 +42,17 @@ export class NeighborhoodController {
   }
 
   @Get(':storeId')
-  @ApiOperation({ summary: 'Listar bairros da loja' })
+  @Public() // 🔥 AQUI libera o GET para todo mundo
+  @ApiOperation({ summary: 'Listar bairros da loja (público)' })
   @ApiParam({ name: 'storeId', type: Number })
-  findAll(@Param('storeId', ParseIntPipe) storeId: number, @Req() req: Request) {
-    const user = req.user as any
-    return this.service.findAll(storeId, user)
+  findAll(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.findAll(storeId)
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Atualizar bairro' })
   @ApiParam({ name: 'id', type: Number })
   update(
@@ -61,6 +65,9 @@ export class NeighborhoodController {
   }
 
   @Put(':id/active')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Ativar ou inativar bairro' })
   @ApiParam({ name: 'id', type: Number })
   @ApiBody({ schema: { example: { active: true } } })
@@ -74,12 +81,13 @@ export class NeighborhoodController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Remover bairro' })
   @ApiParam({ name: 'id', type: Number })
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const user = req.user as any
     return this.service.remove(id, user)
   }
-
-  
 }

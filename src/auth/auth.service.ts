@@ -13,6 +13,7 @@ import { SubscriptionService } from '../subscription/subscription.service'
 import { RegisterStoreDto } from './dtos/register-store.dto'
 import { UserRole } from '../user/enums/user-role.enum'
 
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -113,4 +114,36 @@ export class AuthService {
     }
     return user
   }
+
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+    res: Response,
+  ) {
+    const user = await this.userService.findById(userId)
+  
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Usuário inválido')
+    }
+  
+    const isPasswordValid = await argon2.verify(user.password, currentPassword)
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Senha atual incorreta')
+    }
+  
+    const newHashedPassword = await argon2.hash(newPassword)
+    user.password = newHashedPassword
+  
+    await this.userService.save(user)
+  
+    // ⚠️ Invalida o token atual
+    res.clearCookie('token', {
+      path: '/', // importante garantir que seja o mesmo path usado no .cookie()
+    })
+  
+    return { message: 'Senha alterada com sucesso, você foi deslogado' }
+  }
+  
+  
 }
