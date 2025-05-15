@@ -1,4 +1,3 @@
-// src/coupon/coupon.controller.ts
 import {
   Controller,
   Post,
@@ -19,6 +18,8 @@ import { UpdateCouponDto } from './dto/update-coupon.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { Public } from '../auth/public.decorator'; // ✅ Importa o decorador
+
 import {
   ApiBearerAuth,
   ApiTags,
@@ -47,24 +48,31 @@ export class CouponController {
     return this.couponService.create(dto, req.user);
   }
 
+  @Public()
   @Get('validate')
   @ApiOperation({ summary: 'Valida um cupom por código (público)' })
   @ApiQuery({ name: 'code', type: String, required: true })
+  @ApiQuery({ name: 'storeId', type: Number, required: false })
   @ApiResponse({
     status: 200,
     description: 'Validação do cupom retornada com sucesso',
     schema: {
       example: {
+        id: 1,
         code: 'DESCONTO10',
-        discountPercentage: 10,
+        discount: 10,
         valid: true,
-        expiresAt: '2025-04-30T23:59:59.000Z',
+        expiresAt: '2025-12-31T23:59:59.000Z',
       },
     },
   })
-  async validate(@Query('code') code: string) {
-    return this.couponService.validate(code);
+  async validate(
+    @Query('code') code: string,
+    @Query('storeId') storeId?: number,
+  ) {
+    return this.couponService.validate(code, storeId);
   }
+  
 
   @Get()
   @Roles('ADMIN')

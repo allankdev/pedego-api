@@ -46,16 +46,6 @@ export class CategoryController {
     return this.categoryService.create(storeId, dto, user);
   }
 
-  @Get(':storeId')
-  @Public() // 🔥 Liberar o GET público para qualquer visitante
-  @ApiOperation({ summary: 'Listar categorias da loja (público)' })
-  @ApiParam({ name: 'storeId', type: Number })
-  findAll(
-    @Param('storeId', ParseIntPipe) storeId: number,
-  ) {
-    return this.categoryService.findAll(storeId);
-  }
-
   @Get('my-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -66,6 +56,18 @@ export class CategoryController {
     const storeId = Number(user.store?.id);
     return this.categoryService.findAllForAuthenticated(storeId, user);
   }
+
+  @Get(':storeId')
+  @Public() // 🔥 Liberar o GET público para qualquer visitante
+  @ApiOperation({ summary: 'Listar categorias da loja (público)' })
+  @ApiParam({ name: 'storeId', type: Number })
+  findAll(
+    @Param('storeId', ParseIntPipe) storeId: number,
+  ) {
+    return this.categoryService.findAll(storeId);
+  }
+
+ 
   
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

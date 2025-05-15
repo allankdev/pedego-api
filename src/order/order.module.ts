@@ -11,6 +11,8 @@ import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Stock } from '../stock/stock.entity';
 import { ProductExtraModule } from '../product-extra/product-extra.module';
 import { UserModule } from '../user/user.module'; // ✅ necessário para injetar UserService
+import { Coupon } from '../coupon/coupon.entity';
+
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { UserModule } from '../user/user.module'; // ✅ necessário para injeta
       Store,
       Neighborhood,
       Stock,
+      Coupon,
     ]),
     ProductExtraModule,
     UserModule, // ✅ aqui estava faltando

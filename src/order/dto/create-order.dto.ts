@@ -1,4 +1,3 @@
-// src/order/dto/create-order.dto.ts
 import {
   IsString,
   IsNotEmpty,
@@ -10,7 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../order.entity';
 
 export class OrderItemDto {
@@ -23,10 +22,9 @@ export class OrderItemDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: [3, 5],
     description: 'IDs dos extras selecionados para este produto',
-    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -45,18 +43,17 @@ export class CreateOrderDto {
   @IsNotEmpty()
   customerPhone: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Rua Exemplo, 123 - Bairro Legal',
-    required: false,
+    description: 'Endereço do cliente (obrigatório se entrega)',
   })
   @IsString()
   @IsOptional()
   customerAddress?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1,
     description: 'ID do bairro (obrigatório se entrega)',
-    required: false,
   })
   @IsOptional()
   @IsNumber()
@@ -77,10 +74,9 @@ export class CreateOrderDto {
   @IsEnum(['pix', 'dinheiro', 'cartao'])
   paymentMethod: 'pix' | 'dinheiro' | 'cartao';
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Sem cebola, tocar campainha',
-    required: false,
-    description: 'Observacoes adicionais do pedido',
+    description: 'Observações adicionais do pedido',
   })
   @IsOptional()
   @IsString()
@@ -95,10 +91,10 @@ export class CreateOrderDto {
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'pendente',
     enum: OrderStatus,
-    required: false,
+    description: 'Status do pedido (opcional, default: pendente)',
   })
   @IsOptional()
   @IsEnum(OrderStatus)
@@ -106,8 +102,17 @@ export class CreateOrderDto {
 
   @ApiProperty({
     example: 1,
-    description: 'ID da loja que esta recebendo o pedido',
+    description: 'ID da loja que está recebendo o pedido',
   })
   @IsNumber()
   storeId: number;
+
+  @ApiPropertyOptional({
+    example: 2,
+    description: 'ID do cupom aplicado ao pedido (opcional)',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  couponId?: number;
 }

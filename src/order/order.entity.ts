@@ -14,6 +14,8 @@ import { Payment } from '../payment/payment.entity';
 import { OrderItem } from './order-item.entity';
 import { Store } from '../store/store.entity'; // ✅ NOVO
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
+import { Coupon } from '../coupon/coupon.entity';
+
 
 
 export enum OrderStatus {
@@ -68,6 +70,12 @@ export class Order {
   @OneToOne(() => Payment, (payment) => payment.order, { cascade: true })
   @JoinColumn()
   payment: Payment;
+
+  @ManyToOne(() => Coupon, { nullable: true, eager: true })
+coupon?: Coupon;
+
+@Column('decimal', { precision: 10, scale: 2, nullable: true })
+discountAmount?: number;
 
   @CreateDateColumn()
   createdAt: Date;

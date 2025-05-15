@@ -6,18 +6,18 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Order } from './order.entity';
+import { Order, OrderStatus } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { User } from '../user/user.entity';
 import { OrderItem } from './order-item.entity';
-import { OrderStatus } from './order.entity';
 import { Product } from '../product/product.entity';
 import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Stock } from '../stock/stock.entity';
 import { ProductExtra } from '../product-extra/product-extra.entity';
 import { UserService } from '../user/user.service';
+import { Coupon } from '../coupon/coupon.entity';
 
 @Injectable()
 export class OrderService {
@@ -27,6 +27,9 @@ export class OrderService {
 
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
+    @InjectRepository(Coupon)
+    private couponRepository: Repository<Coupon>,
 
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
@@ -46,11 +49,21 @@ export class OrderService {
     @InjectRepository(ProductExtra)
     private productExtraRepository: Repository<ProductExtra>,
 
-    private readonly userService: UserService, // 👈 necessário para criar cliente automaticamente
+    private readonly userService: UserService,
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto & { userId?: number }): Promise<Order> {
-    const { items, storeId, neighborhoodId, deliveryType, customerName, customerPhone, customerAddress, ...rest } = createOrderDto;
+    const {
+      items,
+      storeId,
+      neighborhoodId,
+      deliveryType,
+      customerName,
+      customerPhone,
+      customerAddress,
+      couponId,
+      ...rest
+    } = createOrderDto;
 
     let user: User | null = null;
 
@@ -69,6 +82,7 @@ export class OrderService {
     if (!store) throw new NotFoundException('Loja não encontrada');
 
     let total = 0;
+    let discountValue = 0;
     const orderItems: OrderItem[] = [];
 
     for (const item of items) {
@@ -118,6 +132,19 @@ export class OrderService {
       total += Number(neighborhood.deliveryFee);
     }
 
+    let coupon: Coupon | undefined;
+    if (couponId) {
+      coupon = await this.couponRepository.findOne({ where: { id: couponId } });
+      if (!coupon) throw new NotFoundException('Cupom não encontrado');
+      if (!coupon.active) throw new BadRequestException('Cupom inativo');
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+        throw new BadRequestException('Cupom expirado');
+      }
+
+      discountValue = (total * Number(coupon.discount)) / 100;
+      total -= discountValue;
+    }
+
     const order = this.orderRepository.create({
       ...rest,
       customerName,
@@ -126,9 +153,11 @@ export class OrderService {
       user,
       store,
       total,
+      discountAmount: discountValue, // ✅ aqui
       items: orderItems,
       deliveryType,
       neighborhood,
+      coupon,
     });
 
     const savedOrder = await this.orderRepository.save(order);
@@ -165,6 +194,7 @@ export class OrderService {
         'items.product',
         'items.extras',
         'neighborhood',
+        'coupon',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -184,6 +214,7 @@ export class OrderService {
         'items.product',
         'items.extras',
         'neighborhood',
+        'coupon',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -199,6 +230,7 @@ export class OrderService {
         'items.product',
         'items.extras',
         'neighborhood',
+        'coupon',
       ],
     });
 
@@ -239,6 +271,7 @@ export class OrderService {
         'items.product',
         'items.extras',
         'neighborhood',
+        'coupon',
       ],
       order: { createdAt: 'DESC' },
     });

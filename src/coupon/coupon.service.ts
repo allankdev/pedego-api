@@ -35,20 +35,28 @@ export class CouponService {
     return this.couponRepository.save(coupon);
   }
 
-  async validate(code: string): Promise<any> {
-    const coupon = await this.couponRepository.findOne({ where: { code } });
-
-    if (!coupon || new Date(coupon.expiresAt) < new Date()) {
-      return { valid: false };
+  async validate(code: string, storeId?: number): Promise<any> {
+    const where: any = { code };
+  
+    if (storeId) {
+      where.store = { id: storeId };
     }
-
+  
+    const coupon = await this.couponRepository.findOne({ where });
+  
+    if (!coupon || (coupon.expiresAt && new Date(coupon.expiresAt) < new Date())) {
+      return { valid: false, message: 'Cupom inválido ou expirado.' };
+    }
+  
     return {
+      id: coupon.id,
       code: coupon.code,
-      discountPercentage: coupon.discount,
+      discount: coupon.discount,
       valid: true,
       expiresAt: coupon.expiresAt,
     };
   }
+  
 
   async findAllByStore(storeId: number): Promise<Coupon[]> {
     return this.couponRepository.find({
