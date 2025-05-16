@@ -56,44 +56,69 @@ export class StoreService {
     return this.storeRepository.save(newStore);
   }
 
-  async findBySubdomain(subdomain: string): Promise<Store> {
+  async findBySubdomain(subdomain: string): Promise<any> {
     const store = await this.storeRepository.findOne({
       where: { subdomain },
       relations: ['openingHours'],
     });
-  
+
     if (!store) {
       throw new NotFoundException(`Loja '${subdomain}' não encontrada.`);
     }
-  
+
     const now = dayjs().locale('pt-br');
     const currentDay = now.format('dddd');
     const currentTime = now.format('HH:mm');
-  
+
     const todayHour = store.openingHours.find(
       (h) => h.day.toLowerCase() === currentDay,
     );
-  
+
     const isNowWithinOpening =
       todayHour && todayHour.open <= currentTime && currentTime <= todayHour.close;
-  
-    // 🔁 Caso esteja em modo manual, mas agora o horário da loja já bate com o automático,
-    // remove o override e volta a seguir os horários definidos
+
     if (store.manualOverride && store.isOpen !== isNowWithinOpening) {
       store.manualOverride = false;
       store.isOpen = isNowWithinOpening;
       await this.storeRepository.save(store);
     }
-  
-    // ⚙️ Se estiver em modo automático, sincroniza com o horário
+
     if (!store.manualOverride && store.isOpen !== isNowWithinOpening) {
       store.isOpen = isNowWithinOpening;
       await this.storeRepository.save(store);
     }
-  
-    return store;
+
+    return {
+      id: store.id,
+      name: store.name,
+      subdomain: store.subdomain,
+      description: store.description,
+      email: store.email,
+      whatsapp: store.whatsapp,
+      country: store.country,
+      operationMode: store.operationMode,
+      isOpen: store.isOpen,
+      manualOverride: store.manualOverride,
+      deliveryTime: store.deliveryTime,
+      minOrderValue: store.minOrderValue,
+      printFontSize: store.printFontSize,
+      printPaperSize: store.printPaperSize,
+      autoPrint: Boolean(store.autoPrint),
+      paymentMethods: store.paymentMethods,
+      avatarImageId: store.avatarImageId,
+      coverImageId: store.coverImageId,
+      street: store.street,
+      number: store.number,
+      complement: store.complement,
+      neighborhood: store.neighborhood,
+      city: store.city,
+      state: store.state,
+      zipCode: store.zipCode,
+      openingHours: store.openingHours,
+      createdAt: store.createdAt,
+      updatedAt: store.updatedAt,
+    };
   }
-  
 
   async update(
     subdomain: string,
@@ -114,7 +139,18 @@ export class StoreService {
       store.paymentMethods = updateStoreDto.paymentMethods;
     }
 
-    Object.assign(store, updateStoreDto);
+    if (typeof updateStoreDto.autoPrint !== 'undefined') {
+      store.autoPrint = Boolean(updateStoreDto.autoPrint);
+    }
+
+    const {
+      autoPrint,
+      paymentMethods,
+      ...rest
+    } = updateStoreDto;
+
+    Object.assign(store, rest);
+
     return this.storeRepository.save(store);
   }
 
@@ -164,43 +200,38 @@ export class StoreService {
     return this.storeRepository.save(store);
   }
 
-  // 🔒 Sem efeito real: apenas retorna o status atual
   async toggleOpen(
     subdomain: string,
     user: { role: string; store?: { subdomain: string } },
     auto = false,
   ): Promise<Store> {
     const store = await this.findBySubdomain(subdomain);
-  
+
     if (user.role !== 'ADMIN' || user.store?.subdomain !== subdomain) {
       throw new ForbiddenException('Você não tem permissão para alterar o status desta loja.');
     }
-  
+
     const now = dayjs().locale('pt-br');
     const currentDay = now.format('dddd');
     const currentTime = now.format('HH:mm');
-  
+
     const todayHour = store.openingHours.find(
       (h) => h.day.toLowerCase() === currentDay,
     );
-  
+
     const isNowWithinOpening =
       todayHour && todayHour.open <= currentTime && currentTime <= todayHour.close;
-  
+
     if (auto) {
-      // Modo automático: reseta manualOverride e ajusta o status conforme horário
       store.manualOverride = false;
       store.isOpen = isNowWithinOpening;
     } else {
-      // Modo manual: alterna o status de aberto/fechado
       store.manualOverride = true;
       store.isOpen = !store.isOpen;
     }
-  
+
     return this.storeRepository.save(store);
   }
-  
-  
 
   async remove(subdomain: string): Promise<void> {
     const store = await this.findBySubdomain(subdomain);

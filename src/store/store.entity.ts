@@ -3,6 +3,8 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Product } from '../product/product.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
@@ -94,6 +96,12 @@ export class Store {
   @Column({ nullable: true })
   zipCode: string;
   // ----------------
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @OneToMany(() => Product, (product) => product.store)
   products: Product[];

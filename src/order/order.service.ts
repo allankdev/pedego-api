@@ -179,7 +179,7 @@ export class OrderService {
         console.log(`  • Extra: ${extra.name} (+R$ ${extra.price})`);
       });
     }
-    console.log(`Total: R$ ${order.total?.toFixed(2)}`);
+    console.log(`Total: R$ ${Number(order.total).toFixed(2)}`);
     console.log('===========================');
   }
 
