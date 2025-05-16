@@ -12,6 +12,7 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
 import { Subscription } from './subscription.entity'
@@ -27,7 +28,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../auth/roles.guard'
 import { Roles } from '../auth/roles.decorator'
 import { UserRole } from '../user/enums/user-role.enum'
-import { StripeService } from '../stripe/stripe.service' // novo
+import { StripeService } from '../stripe/stripe.service'
+import { Public } from '../auth/public.decorator'
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth('access-token')
@@ -36,30 +38,26 @@ import { StripeService } from '../stripe/stripe.service' // novo
 export class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
-    private readonly stripeService: StripeService, // novo
+    private readonly stripeService: StripeService,
   ) {}
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Lista todas as assinaturas (apenas SUPER_ADMIN)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de assinaturas retornada com sucesso',
-    type: [Subscription],
-  })
+  @ApiOperation({ summary: 'List all subscriptions (SUPER_ADMIN only)' })
+  @ApiResponse({ status: 200, type: [Subscription] })
   async findAll(): Promise<Subscription[]> {
     return this.subscriptionService.findAll()
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Busca a assinatura do usuário autenticado' })
-  @ApiResponse({ status: 200, description: 'Assinatura encontrada com sucesso', type: Subscription })
+  @ApiOperation({ summary: 'Get current user subscription' })
+  @ApiResponse({ status: 200, type: Subscription })
   async getMySubscription(@Request() req: any): Promise<Subscription> {
     const userId = req.user.id
     const subscription = await this.subscriptionService.findByUserId(userId)
 
     if (!subscription) {
-      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`)
+      throw new NotFoundException(`Subscription for user ${userId} not found.`)
     }
 
     return subscription
@@ -67,17 +65,14 @@ export class SubscriptionController {
 
   @Get(':userId')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Busca a assinatura de um usuário específico (SUPER_ADMIN)' })
-  @ApiParam({ name: 'userId', type: Number, description: 'ID do usuário' })
-  @ApiResponse({ status: 200, description: 'Assinatura encontrada com sucesso', type: Subscription })
-  @ApiResponse({ status: 404, description: 'Assinatura não encontrada' })
-  async findByUserId(
-    @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<Subscription> {
+  @ApiOperation({ summary: 'Get subscription by userId (SUPER_ADMIN only)' })
+  @ApiParam({ name: 'userId', type: Number })
+  @ApiResponse({ status: 200, type: Subscription })
+  async findByUserId(@Param('userId', ParseIntPipe) userId: number): Promise<Subscription> {
     const subscription = await this.subscriptionService.findByUserId(userId)
 
     if (!subscription) {
-      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`)
+      throw new NotFoundException(`Subscription for user ${userId} not found.`)
     }
 
     return subscription
@@ -85,15 +80,15 @@ export class SubscriptionController {
 
   @Put('check-expiration')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Verifica e atualiza o status de assinaturas expiradas (SUPER_ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Assinaturas expiradas foram marcadas como EXPIRED' })
+  @ApiOperation({ summary: 'Expire outdated trial subscriptions' })
+  @ApiResponse({ status: 200, description: 'Expired trials updated' })
   async checkAndExpireSubscriptions(): Promise<{ updated: number }> {
     return this.subscriptionService.checkAndExpireSubscriptions()
   }
 
   @Post('upgrade')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Faz upgrade de uma assinatura para mensal ou anual (SUPER_ADMIN)' })
+  @ApiOperation({ summary: 'Upgrade subscription (SUPER_ADMIN)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -104,7 +99,6 @@ export class SubscriptionController {
       required: ['userId', 'plan'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Assinatura atualizada com sucesso' })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
     return this.subscriptionService.upgradeSubscription(body.userId, body.plan)
@@ -112,7 +106,7 @@ export class SubscriptionController {
 
   @Post('checkout')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Cria uma sessão de pagamento Stripe para assinatura (ADMIN)' })
+  @ApiOperation({ summary: 'Create Stripe checkout session (ADMIN)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -123,24 +117,43 @@ export class SubscriptionController {
     },
   })
   async checkout(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
-    const user = req.user;
-    return this.stripeService.createCheckoutSession(user.id, body.plan);
+    return this.stripeService.createCheckoutSession(req.user.sub, body.plan)
   }
 
   @Post('purchase')
-@Roles(UserRole.ADMIN)
-@ApiOperation({ summary: 'Compra direta de assinatura (sem trial)' })
-@ApiBody({
-  schema: {
-    type: 'object',
-    properties: {
-      plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Purchase plan directly (ADMIN)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
+      },
+      required: ['plan'],
     },
-    required: ['plan'],
-  },
-})
-async purchase(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
-  const user = req.user;
-  return this.stripeService.createCheckoutSession(user.id, body.plan);
-}
+  })
+  async purchase(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
+    return this.stripeService.createCheckoutSession(req.user.sub, body.plan)
+  }
+
+  @Get('stripe/session/:id')
+  @Public()
+  @ApiOperation({ summary: 'Get Stripe session + subscription (public)' })
+  @ApiParam({ name: 'id', type: String })
+  async getStripeSession(@Param('id') id: string) {
+    const session = await this.stripeService.retrieveSession(id)
+
+    if (!session) {
+      throw new NotFoundException('Stripe session not found')
+    }
+
+    const userId = Number(session.metadata?.userId)
+    if (!userId) {
+      throw new BadRequestException('Invalid user ID in session metadata')
+    }
+
+    const subscription = await this.subscriptionService.findByUserId(userId)
+
+    return { session, subscription }
+  }
 }

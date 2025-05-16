@@ -11,8 +11,16 @@ async function bootstrap() {
   // 🍪 Suporte a cookies
   app.use(cookieParser());
 
-  // 🔄 Stripe Webhook precisa do rawBody na rota específica
-  app.use('/api/webhook/stripe', bodyParser.raw({ type: 'application/json' }));
+  // ✅ Middleware body-parser com verify para capturar o rawBody na rota do Stripe
+  app.use(
+    bodyParser.json({
+      verify: (req: any, res, buf) => {
+        if (req.originalUrl === '/api/webhook/stripe') {
+          req.rawBody = buf; // necessário para o Stripe
+        }
+      },
+    }),
+  );
 
   // 🌐 CORS
   app.enableCors({

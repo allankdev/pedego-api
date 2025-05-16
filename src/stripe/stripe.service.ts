@@ -1,7 +1,5 @@
-// src/stripe/stripe.service.ts
 import { Injectable, BadRequestException } from '@nestjs/common';
 import Stripe from 'stripe';
-import { Request } from 'express';
 import { PaymentService } from '../payment/payment.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import {
@@ -35,7 +33,7 @@ export class StripeService {
           price_data: {
             currency: 'brl',
             product_data: {
-              name: `Assinatura ${plan === 'MONTHLY' ? 'Mensal' : 'Anual'}`,
+              name: `Subscription ${plan === 'MONTHLY' ? 'Monthly' : 'Yearly'}`, // 🔤 inglês
             },
             unit_amount: price,
           },
@@ -47,8 +45,9 @@ export class StripeService {
         userId: String(userId),
         plan,
       },
-      success_url: `${process.env.FRONTEND_URL}/assinatura/sucesso`,
-      cancel_url: `${process.env.FRONTEND_URL}/assinatura/erro`,
+      // ✅ inclui session_id na success_url
+      success_url: `${process.env.FRONTEND_URL}/signature/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/signature/error`,
     });
 
     return session;
@@ -57,39 +56,61 @@ export class StripeService {
   /**
    * Verifica e valida o evento vindo do Stripe Webhook
    */
-  verifyStripeEvent(req: Request): Stripe.Event {
-    const sig = req.headers['stripe-signature'] as string;
-    const rawBody = (req as any).rawBody ?? req.body;
-
+  verifyStripeEvent(payload: Buffer, signature: string): Stripe.Event {
     try {
       return this.stripe.webhooks.constructEvent(
-        rawBody,
-        sig,
+        payload,
+        signature,
         process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
-      throw new BadRequestException(`Webhook inválido: ${err.message}`);
+      throw new BadRequestException(`Invalid webhook: ${err.message}`);
     }
   }
+  async retrieveSession(sessionId: string) {
+    try {
+      return await this.stripe.checkout.sessions.retrieve(sessionId)
+    } catch (error) {
+      console.error('❌ Failed to retrieve Stripe session:', error)
+      return null
+    }
+  }
+  
 
   /**
    * Lida com o evento de pagamento confirmado
    */
   async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const metadata = session.metadata;
-    const userId = Number(metadata?.userId);
-    const plan = metadata?.plan as 'MONTHLY' | 'YEARLY';
+
+    if (!metadata) {
+      console.warn('⚠️ Missing metadata on session:', session.id);
+      throw new BadRequestException('Session missing metadata');
+    }
+
+    const userIdRaw = metadata.userId;
+    const planRaw = metadata.plan;
+
+    if (!userIdRaw || !planRaw) {
+      console.warn('⚠️ Incomplete metadata:', { userIdRaw, planRaw });
+      throw new BadRequestException('Incomplete metadata in checkout');
+    }
+
+    const userId = Number(userIdRaw);
+    const plan = planRaw as 'MONTHLY' | 'YEARLY';
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      console.warn('⚠️ Invalid userId in metadata:', userIdRaw);
+      throw new BadRequestException('Invalid user ID in metadata');
+    }
+
     const amount = session.amount_total ?? 0;
     const stripeTransactionId = session.payment_intent as string;
 
-    if (!userId || !plan) {
-      throw new BadRequestException('Dados de metadata incompletos no checkout');
-    }
-
-    // ✅ Atualiza a assinatura do usuário
+    // ✅ Atualiza assinatura
     await this.subscriptionService.upgradeSubscription(userId, plan);
 
-    // ✅ Registra o pagamento no sistema
+    // ✅ Registra pagamento
     await this.paymentService.createPayment({
       type: PaymentType.SUBSCRIPTION,
       paymentMethod: PaymentMethod.STRIPE,
