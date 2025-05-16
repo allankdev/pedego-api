@@ -1,12 +1,15 @@
-// src/subscription/subscription.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Subscription } from './subscription.entity';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionController } from './subscription.controller';
+import { StripeModule } from '../stripe/stripe.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Subscription])],
+  imports: [
+    TypeOrmModule.forFeature([Subscription]),
+    forwardRef(() => StripeModule),
+  ],
   providers: [SubscriptionService],
   controllers: [SubscriptionController],
   exports: [SubscriptionService],

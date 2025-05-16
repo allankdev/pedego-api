@@ -27,13 +27,17 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../auth/roles.guard'
 import { Roles } from '../auth/roles.decorator'
 import { UserRole } from '../user/enums/user-role.enum'
+import { StripeService } from '../stripe/stripe.service' // novo
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('subscriptions')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly stripeService: StripeService, // novo
+  ) {}
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN)
@@ -105,4 +109,38 @@ export class SubscriptionController {
   async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
     return this.subscriptionService.upgradeSubscription(body.userId, body.plan)
   }
+
+  @Post('checkout')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Cria uma sessão de pagamento Stripe para assinatura (ADMIN)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
+      },
+      required: ['plan'],
+    },
+  })
+  async checkout(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
+    const user = req.user;
+    return this.stripeService.createCheckoutSession(user.id, body.plan);
+  }
+
+  @Post('purchase')
+@Roles(UserRole.ADMIN)
+@ApiOperation({ summary: 'Compra direta de assinatura (sem trial)' })
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
+    },
+    required: ['plan'],
+  },
+})
+async purchase(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
+  const user = req.user;
+  return this.stripeService.createCheckoutSession(user.id, body.plan);
+}
 }

@@ -3,26 +3,29 @@ import { AppModule } from './app.module';
 import { setupSwagger } from './swagger.config';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 🍪 Habilita suporte a cookies
+  // 🍪 Suporte a cookies
   app.use(cookieParser());
 
-  // Prefixo global para as rotas (ex: /api/auth)
-  app.setGlobalPrefix('api');
+  // 🔄 Stripe Webhook precisa do rawBody na rota específica
+  app.use('/api/webhook/stripe', bodyParser.raw({ type: 'application/json' }));
 
-  // 🌐 CORS: permite frontend acessar com cookie
+  // 🌐 CORS
   app.enableCors({
     origin: 'http://localhost:4000',
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });
-  
 
-  // ✅ Validação global com transformação automática de tipos
+  // Prefixo global
+  app.setGlobalPrefix('api');
+
+  // ✅ Validação global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -31,13 +34,12 @@ async function bootstrap() {
     }),
   );
 
-  // 📚 Swagger API docs
+  // 📚 Swagger
   setupSwagger(app);
 
-  // 🚀 Sobe o servidor na porta 3000
+  // 🚀 Inicia
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-
   Logger.log(`🚀 Aplicação rodando em http://localhost:${port}`, 'Bootstrap');
 }
 

@@ -12,11 +12,12 @@ import {
   UsePipes,
   ValidationPipe,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PaymentService } from './payment.service';
 import { Payment } from './payment.entity';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentDto, PaymentType } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import {
   ApiTags,
@@ -24,6 +25,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -35,9 +37,12 @@ import { Roles } from '../auth/roles.decorator';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  // ✅ ROTA PÚBLICA
+  // ✅ ROTA PÚBLICA PARA PAGAMENTO DE PEDIDOS
   @Post()
-  @ApiOperation({ summary: 'Cria um novo pagamento (público)' })
+  @ApiOperation({
+    summary: 'Cria um pagamento de pedido (público)',
+    description: 'Aceita pagamento com type ORDER e dados do pedido',
+  })
   @ApiBody({ type: CreatePaymentDto })
   @ApiResponse({
     status: 201,
@@ -46,7 +51,31 @@ export class PaymentController {
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async createPayment(@Body() createPaymentDto: CreatePaymentDto): Promise<Payment> {
+    if (createPaymentDto.type !== PaymentType.ORDER) {
+      throw new BadRequestException('type deve ser ORDER para este endpoint');
+    }
+
     return this.paymentService.createPayment(createPaymentDto);
+  }
+
+  // ✅ ROTA PROTEGIDA PARA PAGAMENTO DE ASSINATURA
+  @Post('subscription')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN') // ou ADMIN se preferir permitir que a loja crie sua assinatura
+  @ApiOperation({ summary: 'Cria um pagamento de assinatura (Stripe)' })
+  @ApiBody({ type: CreatePaymentDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Pagamento de assinatura criado com sucesso',
+    type: Payment,
+  })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async createSubscriptionPayment(@Body() dto: CreatePaymentDto): Promise<Payment> {
+    if (dto.type !== PaymentType.SUBSCRIPTION) {
+      throw new BadRequestException('type deve ser SUBSCRIPTION para este endpoint');
+    }
+
+    return this.paymentService.createPayment(dto);
   }
 
   // 🔒 ROTAS PROTEGIDAS COM JWT + ROLE
