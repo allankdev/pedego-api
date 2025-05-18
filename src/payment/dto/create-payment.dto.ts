@@ -1,24 +1,6 @@
 import { IsNotEmpty, IsNumber, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export enum PaymentMethod {
-  PIX = 'PIX',
-  CREDIT_CARD = 'CREDIT_CARD',
-  DEBIT_CARD = 'DEBIT_CARD',
-  CASH = 'CASH',
-  STRIPE = 'STRIPE',
-}
-
-export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PAID = 'PAID',
-  CANCELED = 'CANCELED',
-}
-
-export enum PaymentType {
-  ORDER = 'ORDER',
-  SUBSCRIPTION = 'SUBSCRIPTION',
-}
+import { PaymentMethod, PaymentStatus, PaymentType } from '../payment.entity';
 
 export class CreatePaymentDto {
   @ApiProperty({ example: 49.9, description: 'Valor do pagamento' })
@@ -27,9 +9,9 @@ export class CreatePaymentDto {
   amount: number;
 
   @ApiProperty({
-    example: 'PIX',
+    example: 'pix',
     enum: PaymentMethod,
-    description: 'Método de pagamento',
+    description: 'Método de pagamento (pix, dinheiro, cartao_credito, etc.)',
   })
   @IsEnum(PaymentMethod)
   @IsNotEmpty()
@@ -38,7 +20,7 @@ export class CreatePaymentDto {
   @ApiProperty({
     example: 'ORDER',
     enum: PaymentType,
-    description: 'Tipo de pagamento: pedido ou assinatura',
+    description: 'Tipo de pagamento: pedido (ORDER) ou assinatura (SUBSCRIPTION)',
   })
   @IsEnum(PaymentType)
   @IsNotEmpty()
@@ -46,7 +28,7 @@ export class CreatePaymentDto {
 
   @ApiPropertyOptional({
     example: 1,
-    description: 'ID do pedido (necessário se type for ORDER)',
+    description: 'ID do pedido (obrigatório se type for ORDER)',
   })
   @IsOptional()
   @IsNumber()
@@ -54,7 +36,7 @@ export class CreatePaymentDto {
 
   @ApiPropertyOptional({
     example: 1,
-    description: 'ID do usuário (necessário se type for SUBSCRIPTION)',
+    description: 'ID do usuário (obrigatório se type for SUBSCRIPTION)',
   })
   @IsOptional()
   @IsNumber()

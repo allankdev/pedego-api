@@ -11,7 +11,6 @@ import {
   ValidationPipe,
   UseGuards,
   Request,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
@@ -43,21 +42,20 @@ export class SubscriptionController {
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'List all subscriptions (SUPER_ADMIN only)' })
-  @ApiResponse({ status: 200, type: [Subscription] })
+  @ApiOperation({ summary: 'Lista todas as assinaturas (apenas SUPER_ADMIN)' })
   async findAll(): Promise<Subscription[]> {
     return this.subscriptionService.findAll()
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Get current user subscription' })
-  @ApiResponse({ status: 200, type: Subscription })
+  @ApiOperation({ summary: 'Busca a assinatura do usuário autenticado' })
   async getMySubscription(@Request() req: any): Promise<Subscription> {
-    const userId = req.user.id
+    const userId = req.user.sub
     const subscription = await this.subscriptionService.findByUserId(userId)
 
+    // Cria uma trial somente se não houver nenhuma assinatura
     if (!subscription) {
-      throw new NotFoundException(`Subscription for user ${userId} not found.`)
+      return this.subscriptionService.createTrial(userId)
     }
 
     return subscription
@@ -65,14 +63,13 @@ export class SubscriptionController {
 
   @Get(':userId')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get subscription by userId (SUPER_ADMIN only)' })
+  @ApiOperation({ summary: 'Busca assinatura de um usuário específico (SUPER_ADMIN)' })
   @ApiParam({ name: 'userId', type: Number })
-  @ApiResponse({ status: 200, type: Subscription })
   async findByUserId(@Param('userId', ParseIntPipe) userId: number): Promise<Subscription> {
     const subscription = await this.subscriptionService.findByUserId(userId)
 
     if (!subscription) {
-      throw new NotFoundException(`Subscription for user ${userId} not found.`)
+      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada.`)
     }
 
     return subscription
@@ -80,15 +77,15 @@ export class SubscriptionController {
 
   @Put('check-expiration')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Expire outdated trial subscriptions' })
-  @ApiResponse({ status: 200, description: 'Expired trials updated' })
+  @ApiOperation({ summary: 'Expira trials vencidos (SUPER_ADMIN)' })
   async checkAndExpireSubscriptions(): Promise<{ updated: number }> {
     return this.subscriptionService.checkAndExpireSubscriptions()
   }
 
   @Post('upgrade')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Upgrade subscription (SUPER_ADMIN)' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @ApiOperation({ summary: 'Upgrade para plano mensal ou anual (SUPER_ADMIN)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -99,14 +96,14 @@ export class SubscriptionController {
       required: ['userId', 'plan'],
     },
   })
-  @UsePipes(new ValidationPipe({ whitelist: true }))
   async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
     return this.subscriptionService.upgradeSubscription(body.userId, body.plan)
   }
 
   @Post('checkout')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Create Stripe checkout session (ADMIN)' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @ApiOperation({ summary: 'Cria sessão de pagamento Stripe para assinatura (ADMIN)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -122,7 +119,8 @@ export class SubscriptionController {
 
   @Post('purchase')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Purchase plan directly (ADMIN)' })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @ApiOperation({ summary: 'Compra direta de plano de assinatura (ADMIN)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -138,7 +136,7 @@ export class SubscriptionController {
 
   @Get('stripe/session/:id')
   @Public()
-  @ApiOperation({ summary: 'Get Stripe session + subscription (public)' })
+  @ApiOperation({ summary: 'Consulta sessão do Stripe + assinatura (público)' })
   @ApiParam({ name: 'id', type: String })
   async getStripeSession(@Param('id') id: string) {
     const session = await this.stripeService.retrieveSession(id)

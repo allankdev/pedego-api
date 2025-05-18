@@ -5,7 +5,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import {
   PaymentType,
   PaymentMethod,
-} from '../payment/dto/create-payment.dto';
+} from '../payment/payment.entity'; 
 
 @Injectable()
 export class StripeService {

@@ -4,13 +4,13 @@ import {
   IsEnum,
   IsArray,
   ValidateNested,
-  IsEmail,
   IsNumber,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '../order.entity';
+import { PaymentMethod } from '../../payment/payment.entity'; // Puxando do enum real oficial
 
 class UpdateOrderItemDto {
   @ApiProperty({ example: 1, required: false })
@@ -30,7 +30,6 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   customerName?: string;
-
 
   @ApiProperty({ example: '+55 11999999999', required: false })
   @IsOptional()
@@ -52,13 +51,13 @@ export class UpdateOrderDto {
   deliveryType?: 'entrega' | 'retirada';
 
   @ApiProperty({
-    example: 'cartao',
-    enum: ['pix', 'dinheiro', 'cartao'],
+    example: 'pix',
+    enum: PaymentMethod,
     required: false,
   })
   @IsOptional()
-  @IsEnum(['pix', 'dinheiro', 'cartao'])
-  paymentMethod?: 'pix' | 'dinheiro' | 'cartao';
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @ApiProperty({
     type: [UpdateOrderItemDto],

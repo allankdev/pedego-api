@@ -1,6 +1,6 @@
 import { IsOptional, IsNumber, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentMethod, PaymentStatus } from './create-payment.dto';
+import { PaymentMethod, PaymentStatus } from '../payment.entity';
 
 export class UpdatePaymentDto {
   @ApiPropertyOptional({ example: 49.9, description: 'Novo valor do pagamento' })
@@ -9,9 +9,9 @@ export class UpdatePaymentDto {
   amount?: number;
 
   @ApiPropertyOptional({
-    example: 'CREDIT_CARD',
+    example: 'cartao_credito',
     enum: PaymentMethod,
-    description: 'Novo método de pagamento',
+    description: 'Novo método de pagamento (pix, dinheiro, cartao_credito, etc.)',
   })
   @IsOptional()
   @IsEnum(PaymentMethod)
@@ -26,9 +26,9 @@ export class UpdatePaymentDto {
   orderId?: number;
 
   @ApiPropertyOptional({
-    example: 'CANCELED',
+    example: 'cancelled',
     enum: PaymentStatus,
-    description: 'Status do pagamento',
+    description: 'Novo status do pagamento (pending, paid, failed, cancelled)',
   })
   @IsOptional()
   @IsEnum(PaymentStatus)

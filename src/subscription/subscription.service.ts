@@ -10,8 +10,14 @@ export class SubscriptionService {
     private subscriptionRepository: Repository<Subscription>,
   ) {}
 
-  // Cria uma assinatura trial (30 dias)
+  // Cria uma assinatura trial (30 dias) somente se não houver NENHUMA assinatura registrada
   async createTrial(userId: number): Promise<Subscription> {
+    const existing = await this.subscriptionRepository.findOne({
+      where: { userId },
+    });
+
+    if (existing) return existing;
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
@@ -24,9 +30,39 @@ export class SubscriptionService {
     return this.subscriptionRepository.save(trial);
   }
 
-  // Busca a assinatura de um usuário
+  // Busca a assinatura válida mais recente do usuário
   async findByUserId(userId: number): Promise<Subscription | null> {
-    return this.subscriptionRepository.findOne({ where: { userId } });
+    const subscriptions = await this.subscriptionRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!subscriptions.length) return null;
+
+    const now = new Date();
+
+    // 1. Retorna a mais recente assinatura válida (não expirada nem EXPIRED)
+    for (const sub of subscriptions) {
+      if (
+        sub.status !== SubscriptionStatus.EXPIRED &&
+        sub.expiresAt &&
+        sub.expiresAt > now
+      ) {
+        return sub;
+      }
+    }
+
+    // 2. Se todas estiverem expiradas, atualiza a mais recente se necessário
+    const latest = subscriptions[0];
+    if (
+      latest.expiresAt < now &&
+      latest.status !== SubscriptionStatus.EXPIRED
+    ) {
+      latest.status = SubscriptionStatus.EXPIRED;
+      return this.subscriptionRepository.save(latest);
+    }
+
+    return latest;
   }
 
   // Lista todas as assinaturas (para SUPER_ADMIN)
@@ -34,7 +70,7 @@ export class SubscriptionService {
     return this.subscriptionRepository.find();
   }
 
-  // Expira manualmente a assinatura
+  // Expira manualmente a assinatura de um usuário
   async expireSubscription(userId: number): Promise<Subscription> {
     const subscription = await this.findByUserId(userId);
     if (!subscription) {
@@ -45,7 +81,7 @@ export class SubscriptionService {
     return this.subscriptionRepository.save(subscription);
   }
 
-  // Atualiza assinatura para plano pago (mensal ou anual)
+  // Atualiza assinatura existente para plano pago
   async upgradeSubscription(
     userId: number,
     plan: 'MONTHLY' | 'YEARLY',
@@ -69,10 +105,9 @@ export class SubscriptionService {
     return this.subscriptionRepository.save(subscription);
   }
 
-  // Checa e expira assinaturas trial automaticamente
+  // Expira todas as assinaturas trial vencidas
   async checkAndExpireSubscriptions(): Promise<{ updated: number }> {
     const now = new Date();
-
     const subscriptions = await this.subscriptionRepository.find({
       where: { status: SubscriptionStatus.TRIAL },
     });

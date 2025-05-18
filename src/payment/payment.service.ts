@@ -8,10 +8,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './payment.entity';
 import {
-  CreatePaymentDto,
+  PaymentMethod,
   PaymentStatus,
   PaymentType,
-} from './dto/create-payment.dto';
+} from './payment.entity'; // ✅ Corrigido: importar da própria entidade
+
+import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 @Injectable()
@@ -24,7 +26,6 @@ export class PaymentService {
   async createPayment(createPaymentDto: CreatePaymentDto): Promise<Payment> {
     const { type, orderId, userId } = createPaymentDto;
 
-    // Validação de campos obrigatórios
     if (type === PaymentType.ORDER && !orderId) {
       throw new BadRequestException('orderId é obrigatório para pagamentos de pedido');
     }
@@ -33,7 +34,6 @@ export class PaymentService {
       throw new BadRequestException('userId é obrigatório para pagamentos de assinatura');
     }
 
-    // Verifica duplicidade só se for pagamento de pedido
     if (type === PaymentType.ORDER && orderId) {
       const existingPayment = await this.paymentRepository.findOne({
         where: { order: { id: orderId } },
@@ -49,7 +49,7 @@ export class PaymentService {
       amount: createPaymentDto.amount,
       paymentMethod: createPaymentDto.paymentMethod,
       type: createPaymentDto.type,
-      status: PaymentStatus.PAID, // ou PENDING, dependendo do contexto
+      status: PaymentStatus.PAID,
       order: orderId ? { id: orderId } : undefined,
       userId: userId ?? undefined,
       stripeTransactionId: createPaymentDto.stripeTransactionId,
@@ -86,8 +86,16 @@ export class PaymentService {
       .leftJoinAndSelect('order.items', 'items')
       .leftJoinAndSelect('items.product', 'product')
       .where('store.id = :storeId', { storeId })
+      .andWhere('payment.type = :type', { type: PaymentType.ORDER })
       .orderBy('payment.paymentDate', 'DESC')
       .getMany();
+  }
+
+  async getSubscriptionPayments(): Promise<Payment[]> {
+    return this.paymentRepository.find({
+      where: { type: PaymentType.SUBSCRIPTION },
+      order: { paymentDate: 'DESC' },
+    });
   }
 
   async updatePayment(id: number, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
@@ -98,8 +106,19 @@ export class PaymentService {
 
   async cancelPayment(id: number): Promise<Payment> {
     const payment = await this.getPaymentById(id);
-    payment.status = PaymentStatus.CANCELED;
+    payment.status = PaymentStatus.CANCELLED;
     return this.paymentRepository.save(payment);
+  }
+
+  async confirmPayment(id: number): Promise<Payment> {
+    const payment = await this.getPaymentById(id);
+
+    if (payment.status !== PaymentStatus.PENDING) {
+      throw new BadRequestException('Pagamento já está confirmado ou foi cancelado.');
+    }
+
+    payment.status = PaymentStatus.PAID;
+    return await this.paymentRepository.save(payment);
   }
 
   async deletePayment(id: number): Promise<void> {

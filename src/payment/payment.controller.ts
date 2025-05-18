@@ -17,7 +17,12 @@ import {
 import { Request } from 'express';
 import { PaymentService } from './payment.service';
 import { Payment } from './payment.entity';
-import { CreatePaymentDto, PaymentType } from './dto/create-payment.dto';
+import {
+  PaymentMethod,
+  PaymentStatus,
+  PaymentType,
+} from './payment.entity';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import {
   ApiTags,
@@ -37,7 +42,6 @@ import { Roles } from '../auth/roles.decorator';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  // ✅ ROTA PÚBLICA PARA PAGAMENTO DE PEDIDOS
   @Post()
   @ApiOperation({
     summary: 'Cria um pagamento de pedido (público)',
@@ -58,10 +62,9 @@ export class PaymentController {
     return this.paymentService.createPayment(createPaymentDto);
   }
 
-  // ✅ ROTA PROTEGIDA PARA PAGAMENTO DE ASSINATURA
   @Post('subscription')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SUPER_ADMIN') // ou ADMIN se preferir permitir que a loja crie sua assinatura
+  @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Cria um pagamento de assinatura (Stripe)' })
   @ApiBody({ type: CreatePaymentDto })
   @ApiResponse({
@@ -78,15 +81,23 @@ export class PaymentController {
     return this.paymentService.createPayment(dto);
   }
 
-  // 🔒 ROTAS PROTEGIDAS COM JWT + ROLE
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get()
-  @Roles('ADMIN')
-  @ApiOperation({ summary: 'Lista todos os pagamentos (somente ADMIN)' })
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Lista todos os pagamentos (role-aware)' })
   @ApiResponse({ status: 200, type: [Payment] })
-  async getPayments(): Promise<Payment[]> {
-    return this.paymentService.getPayments();
+  async getPayments(@Req() req: Request): Promise<Payment[]> {
+    const user = req.user as any;
+
+    if (user.role === 'SUPER_ADMIN') {
+      return this.paymentService.getPayments();
+    }
+
+    if (user.role === 'ADMIN' && user.store?.id) {
+      return this.paymentService.getPaymentsByStore(user.store.id);
+    }
+
+    throw new ForbiddenException('Permissão insuficiente.');
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -99,6 +110,7 @@ export class PaymentController {
     if (!user?.store?.id) {
       throw new ForbiddenException('Loja não encontrada no token do usuário');
     }
+
     return this.paymentService.getPaymentsByStore(user.store.id);
   }
 
@@ -144,11 +156,29 @@ export class PaymentController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Put(':id/confirm')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Confirma manualmente um pagamento pendente' })
+  @ApiResponse({ status: 200, type: Payment })
+  async confirmPayment(@Param('id', ParseIntPipe) id: number): Promise<Payment> {
+    return this.paymentService.confirmPayment(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Remove um pagamento (somente ADMIN)' })
   @ApiResponse({ status: 200, description: 'Pagamento removido com sucesso' })
   async deletePayment(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.paymentService.deletePayment(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('subscriptions')
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'Lista pagamentos de assinatura (somente SUPER_ADMIN)' })
+  @ApiResponse({ status: 200, type: [Payment] })
+  async getSubscriptionPayments(): Promise<Payment[]> {
+    return this.paymentService.getSubscriptionPayments();
   }
 }

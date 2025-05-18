@@ -15,6 +15,8 @@ import { OrderItem } from './order-item.entity';
 import { Store } from '../store/store.entity'; // ✅ NOVO
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Coupon } from '../coupon/coupon.entity';
+import { PaymentMethod } from '../payment/payment.entity';
+
 
 
 
@@ -42,8 +44,8 @@ export class Order {
   @Column({ type: 'enum', enum: ['entrega', 'retirada'] })
   deliveryType: 'entrega' | 'retirada';
 
-  @Column({ type: 'enum', enum: ['pix', 'dinheiro', 'cartao'] })
-  paymentMethod: 'pix' | 'dinheiro' | 'cartao';
+  @Column({ type: 'enum', enum: PaymentMethod })
+paymentMethod: PaymentMethod;
 
   @Column({ nullable: true })
   observations?: string;

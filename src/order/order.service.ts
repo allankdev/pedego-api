@@ -18,6 +18,12 @@ import { Stock } from '../stock/stock.entity';
 import { ProductExtra } from '../product-extra/product-extra.entity';
 import { UserService } from '../user/user.service';
 import { Coupon } from '../coupon/coupon.entity';
+import { Payment } from '../payment/payment.entity';
+import {
+  PaymentMethod,
+  PaymentStatus,
+  PaymentType,
+} from '../payment/payment.entity';
 
 @Injectable()
 export class OrderService {
@@ -62,10 +68,11 @@ export class OrderService {
       customerPhone,
       customerAddress,
       couponId,
+      paymentMethod,
       ...rest
     } = createOrderDto;
 
-    let user: User | null = null;
+    let user: User;
 
     if (createOrderDto.userId) {
       user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
@@ -153,14 +160,28 @@ export class OrderService {
       user,
       store,
       total,
-      discountAmount: discountValue, // ✅ aqui
+      discountAmount: discountValue,
       items: orderItems,
       deliveryType,
       neighborhood,
       coupon,
+      paymentMethod,
     });
 
     const savedOrder = await this.orderRepository.save(order);
+
+    const payment = this.orderRepository.manager.create(Payment, {
+      amount: total,
+      paymentMethod,
+      status: PaymentStatus.PENDING,
+      type: PaymentType.ORDER,
+      order: savedOrder,
+    });
+
+    await this.orderRepository.manager.save(payment);
+
+    savedOrder.payment = payment;
+    await this.orderRepository.save(savedOrder);
 
     if (store.autoPrint) {
       await this.printOrder(savedOrder);

@@ -12,6 +12,7 @@ import { Stock } from '../stock/stock.entity';
 import { ProductExtraModule } from '../product-extra/product-extra.module';
 import { UserModule } from '../user/user.module'; // ✅ necessário para injetar UserService
 import { Coupon } from '../coupon/coupon.entity';
+import { Payment } from '../payment/payment.entity';
 
 
 @Module({
@@ -25,6 +26,7 @@ import { Coupon } from '../coupon/coupon.entity';
       Neighborhood,
       Stock,
       Coupon,
+      Payment,
     ]),
     ProductExtraModule,
     UserModule, // ✅ aqui estava faltando

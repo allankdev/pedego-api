@@ -3,11 +3,28 @@ import {
   Column,
   PrimaryGeneratedColumn,
   OneToOne,
-  ManyToOne,
 } from 'typeorm';
 import { Order } from '../order/order.entity';
-import { PaymentMethod, PaymentStatus } from './dto/create-payment.dto';
 
+// ✅ Métodos de pagamento aceitos na plataforma
+export enum PaymentMethod {
+  PIX = 'pix',
+  DINHEIRO = 'dinheiro',
+  CARTAO_CREDITO = 'cartao_credito',
+  CARTAO_DEBITO = 'cartao_debito',
+  VALE_REFEICAO = 'vale_refeicao',
+  STRIPE = 'stripe',
+}
+
+// ✅ Status do pagamento
+export enum PaymentStatus {
+  PENDING = 'pending',
+  PAID = 'paid',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+}
+
+// ✅ Tipo de pagamento (pedido ou assinatura)
 export enum PaymentType {
   ORDER = 'ORDER',
   SUBSCRIPTION = 'SUBSCRIPTION',
@@ -44,10 +61,10 @@ export class Payment {
   order?: Order;
 
   @Column({ nullable: true })
-  userId?: number; // usado para assinatura (vincula ao usuário)
+  userId?: number;
 
   @Column({ nullable: true })
-  stripeTransactionId?: string; // usado para controle do Stripe
+  stripeTransactionId?: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   paymentDate: Date;

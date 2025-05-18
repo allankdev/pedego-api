@@ -11,6 +11,7 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../order.entity';
+import { PaymentMethod } from '../../payment/payment.entity';
 
 export class OrderItemDto {
   @ApiProperty({ example: 1, description: 'ID do produto' })
@@ -33,7 +34,7 @@ export class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ example: 'Joao da Silva' })
+  @ApiProperty({ example: 'João da Silva' })
   @IsString()
   @IsNotEmpty()
   customerName: string;
@@ -47,8 +48,8 @@ export class CreateOrderDto {
     example: 'Rua Exemplo, 123 - Bairro Legal',
     description: 'Endereço do cliente (obrigatório se entrega)',
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   customerAddress?: string;
 
   @ApiPropertyOptional({
@@ -68,11 +69,12 @@ export class CreateOrderDto {
   deliveryType: 'entrega' | 'retirada';
 
   @ApiProperty({
-    example: 'pix',
-    enum: ['pix', 'dinheiro', 'cartao'],
+    example: PaymentMethod.PIX,
+    enum: PaymentMethod,
+    description: 'Método de pagamento (pix, dinheiro, cartao_credito, etc.)',
   })
-  @IsEnum(['pix', 'dinheiro', 'cartao'])
-  paymentMethod: 'pix' | 'dinheiro' | 'cartao';
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
 
   @ApiPropertyOptional({
     example: 'Sem cebola, tocar campainha',
