@@ -29,6 +29,8 @@ import { Roles } from '../auth/roles.decorator'
 import { UserRole } from '../user/enums/user-role.enum'
 import { StripeService } from '../stripe/stripe.service'
 import { Public } from '../auth/public.decorator'
+import { SubscriptionPlan } from './subscription.entity';
+
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth('access-token')
@@ -97,7 +99,7 @@ export class SubscriptionController {
     },
   })
   async upgrade(@Body() body: { userId: number; plan: 'MONTHLY' | 'YEARLY' }) {
-    return this.subscriptionService.upgradeSubscription(body.userId, body.plan)
+    return this.subscriptionService.upgradeSubscription(body.userId, SubscriptionPlan[body.plan]);
   }
 
   @Post('checkout')

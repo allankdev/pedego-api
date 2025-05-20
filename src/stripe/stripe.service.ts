@@ -6,6 +6,8 @@ import {
   PaymentType,
   PaymentMethod,
 } from '../payment/payment.entity'; 
+import { SubscriptionPlan } from '../subscription/subscription.entity';
+
 
 @Injectable()
 export class StripeService {
@@ -108,7 +110,7 @@ export class StripeService {
     const stripeTransactionId = session.payment_intent as string;
 
     // ✅ Atualiza assinatura
-    await this.subscriptionService.upgradeSubscription(userId, plan);
+    await this.subscriptionService.upgradeSubscription(userId, SubscriptionPlan[plan]);
 
     // ✅ Registra pagamento
     await this.paymentService.createPayment({

@@ -28,6 +28,9 @@ export class Store {
   @Column({ unique: true })
   subdomain: string;
 
+  @Column({ default: false })
+isSuspended: boolean;
+
   @Column({ nullable: true })
   email: string;
 

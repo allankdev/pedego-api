@@ -20,6 +20,7 @@ import {CloudflareR2Module} from './cloudflare/cloudflare-r2.module';
 import {PaymentModule} from './payment/payment.module';
 import {ProductExtraModule} from './product-extra/product-extra.module';
 import { ReportsModule } from './reports/reports.module';
+import {SuperAdminModule} from './super-admin/super-admin.module';
 
 
 
@@ -54,6 +55,7 @@ import { ReportsModule } from './reports/reports.module';
     PaymentModule,
     ProductExtraModule,
     ReportsModule,
+    SuperAdminModule,
      // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],

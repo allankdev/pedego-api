@@ -1,9 +1,16 @@
-// src/user/user.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  OneToOne,
+} from 'typeorm';
 import { Order } from '../order/order.entity';
 import { Coupon } from '../coupon/coupon.entity';
 import { UserRole } from './enums/user-role.enum';
 import { Store } from '../store/store.entity';
+import { Subscription } from '../subscription/subscription.entity';
 
 @Entity()
 export class User {
@@ -22,6 +29,9 @@ export class User {
   @Column({ nullable: true })
   password?: string;
 
+  @Column({ default: true })
+  isActive: boolean;
+
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -29,9 +39,11 @@ export class User {
   })
   role: UserRole;
 
-  // 🔥 Novo campo: address (endereço do usuário)
   @Column({ nullable: true })
   address?: string;
+
+  @OneToOne(() => Subscription, (subscription) => subscription.user)
+  subscription: Subscription;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
@@ -40,5 +52,5 @@ export class User {
   coupons: Coupon[];
 
   @ManyToOne(() => Store, (store) => store.users, { nullable: true })
-  store: Store;
+  store?: Store;
 }

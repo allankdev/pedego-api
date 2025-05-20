@@ -1,7 +1,12 @@
+// src/subscription/subscription.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Subscription, SubscriptionStatus } from './subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+  SubscriptionPlan,
+} from './subscription.entity';
 
 @Injectable()
 export class SubscriptionService {
@@ -25,6 +30,7 @@ export class SubscriptionService {
       userId,
       status: SubscriptionStatus.TRIAL,
       expiresAt,
+      plan: null,
     });
 
     return this.subscriptionRepository.save(trial);
@@ -74,7 +80,9 @@ export class SubscriptionService {
   async expireSubscription(userId: number): Promise<Subscription> {
     const subscription = await this.findByUserId(userId);
     if (!subscription) {
-      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada`);
+      throw new NotFoundException(
+        `Assinatura do usuário ${userId} não encontrada`,
+      );
     }
 
     subscription.status = SubscriptionStatus.EXPIRED;
@@ -84,22 +92,24 @@ export class SubscriptionService {
   // Atualiza assinatura existente para plano pago
   async upgradeSubscription(
     userId: number,
-    plan: 'MONTHLY' | 'YEARLY',
+    plan: SubscriptionPlan,
   ): Promise<Subscription> {
     const subscription = await this.findByUserId(userId);
     if (!subscription) {
-      throw new NotFoundException(`Assinatura do usuário ${userId} não encontrada`);
+      throw new NotFoundException(
+        `Assinatura do usuário ${userId} não encontrada`,
+      );
     }
 
     const newExpiration = new Date();
-    if (plan === 'MONTHLY') {
+    if (plan === SubscriptionPlan.MONTHLY) {
       newExpiration.setMonth(newExpiration.getMonth() + 1);
-    } else {
+    } else if (plan === SubscriptionPlan.YEARLY) {
       newExpiration.setFullYear(newExpiration.getFullYear() + 1);
     }
 
-    subscription.status =
-      plan === 'MONTHLY' ? SubscriptionStatus.MONTHLY : SubscriptionStatus.YEARLY;
+    subscription.status = SubscriptionStatus.ACTIVE;
+    subscription.plan = plan;
     subscription.expiresAt = newExpiration;
 
     return this.subscriptionRepository.save(subscription);

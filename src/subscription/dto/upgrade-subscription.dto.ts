@@ -1,8 +1,8 @@
-// src/subscription/dto/upgrade-subscription.dto.ts
+// src/subscription/dto/upgrade-subscription-request.dto.ts
 import { IsIn, IsInt } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UpgradeSubscriptionDto {
+export class UpgradeSubscriptionRequestDto {
   @ApiProperty({ example: 1, description: 'ID do usuário' })
   @IsInt()
   userId: number;

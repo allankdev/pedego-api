@@ -24,13 +24,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       const request = context.switchToHttp().getRequest();
       const user = request.user;
 
-      if (!user?.store) {
+      // ✅ Permite acesso se for SUPER_ADMIN mesmo sem store
+      if (user.role !== 'SUPER_ADMIN' && !user?.store) {
         throw new UnauthorizedException('Loja não associada ao usuário');
       }
 
       console.log('USER (JwtAuthGuard):', user);
 
-      return !!result; // ⬅️ Aqui a correção: resultado já está aguardado, só converte pra boolean
+      return !!result;
     } catch (error) {
       console.error('Erro de autenticação:', error);
       throw new UnauthorizedException('Usuário não autenticado ou sessão expirada');

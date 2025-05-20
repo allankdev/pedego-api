@@ -74,39 +74,49 @@ export class AuthService {
 
   async login(email: string, password: string, res: Response) {
     const user = await this.userService.findByEmailWithStore(email)
-
+  
     if (!user || !user.password) {
       throw new UnauthorizedException('Credenciais inválidas')
     }
-
+  
     const isPasswordValid = await argon2.verify(user.password, password)
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciais inválidas')
     }
-
+  
+    // 🔒 Bloqueia se usuário estiver desativado
+    if (!user.isActive) {
+      throw new UnauthorizedException('Usuário desativado')
+    }
+  
+    // 🔒 Bloqueia se for admin com loja suspensa
+    if (user.role === UserRole.ADMIN && user.store?.isSuspended) {
+      throw new UnauthorizedException('Loja suspensa')
+    }
+  
     const payload = {
       sub: user.id,
       role: user.role,
       storeId: user.store?.id,
     }
-
+  
     const accessToken = this.jwtService.sign(payload)
-
+  
     res.cookie('token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/', // ESSENCIAL: garante que o clearCookie funcione
+      path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     })
-
+  
     return {
       message: 'Login efetuado com sucesso',
       user,
       access_token: accessToken,
     }
   }
-
+  
   async validateUserById(id: number): Promise<User> {
     const user = await this.userService.findByIdWithStore(id)
     if (!user) {
