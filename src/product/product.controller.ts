@@ -19,6 +19,7 @@ import {
 import { Request } from 'express'
 import { ProductService } from './product.service'
 import { Product } from './product.entity'
+import { Query } from '@nestjs/common'
 import { CreateProductDto } from './dto/create-product.dto'
 import { UpdateProductDto } from './dto/update-product.dto'
 import {
@@ -69,12 +70,15 @@ export class ProductController {
   }
 
   @Get('store/:storeId')
-@ApiOperation({ summary: 'Lista produtos disponíveis de uma loja (público)' })
-@ApiParam({ name: 'storeId', type: Number, description: 'ID da loja' })
-@ApiResponse({ status: 200, description: 'Produtos da loja retornados com sucesso', type: [Product] })
-async findPublicByStoreId(@Param('storeId', ParseIntPipe) storeId: number): Promise<Product[]> {
-  return this.productService.findPublicByStoreId(storeId)
-}
+  @ApiOperation({ summary: 'Lista produtos disponíveis de uma loja (público), com filtro por categoria' })
+  @ApiParam({ name: 'storeId', type: Number, description: 'ID da loja' })
+  @ApiResponse({ status: 200, description: 'Produtos da loja retornados com sucesso', type: [Product] })
+  async findPublicByStoreId(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('categoryId') categoryId?: number,
+  ): Promise<Product[]> {
+    return this.productService.findPublicByStoreWithFilter(storeId, categoryId)
+  }
 
 
   @Post()

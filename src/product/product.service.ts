@@ -226,5 +226,26 @@ export class ProductService {
       order: { id: 'DESC' },
     })
   }
+
+  async findPublicByStoreWithFilter(storeId: number, categoryId?: number): Promise<Product[]> {
+    const where: any = {
+      store: { id: storeId },
+      available: true,
+    }
+  
+    if (categoryId) {
+      where.category = { id: categoryId }
+    }
+  
+    return this.productRepository.find({
+      where,
+      relations: ['category', 'store'],
+      order: {
+        position: 'ASC',
+        name: 'ASC',
+      },
+    })
+  }
+  
   
 }

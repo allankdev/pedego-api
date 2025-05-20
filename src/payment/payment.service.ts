@@ -87,9 +87,11 @@ export class PaymentService {
       .leftJoinAndSelect('items.product', 'product')
       .where('store.id = :storeId', { storeId })
       .andWhere('payment.type = :type', { type: PaymentType.ORDER })
+      .andWhere('order.status != :status', { status: 'cancelado' }) // 👈 Exclui pagamentos de pedidos cancelados
       .orderBy('payment.paymentDate', 'DESC')
       .getMany();
   }
+  
 
   async getSubscriptionPayments(): Promise<Payment[]> {
     return this.paymentRepository.find({

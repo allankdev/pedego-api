@@ -17,13 +17,14 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../user/enums/user-role.enum';
 import { RolesGuard } from '../auth/roles.guard';
-import { Public } from '../auth/public.decorator'; // 🔥 Importa aqui também
+import { Public } from '../auth/public.decorator';
 import { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiTags,
   ApiOperation,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 
 @ApiTags('Categories')
@@ -58,17 +59,36 @@ export class CategoryController {
   }
 
   @Get(':storeId')
-  @Public() // 🔥 Liberar o GET público para qualquer visitante
+  @Public()
   @ApiOperation({ summary: 'Listar categorias da loja (público)' })
   @ApiParam({ name: 'storeId', type: Number })
-  findAll(
-    @Param('storeId', ParseIntPipe) storeId: number,
-  ) {
+  findAll(@Param('storeId', ParseIntPipe) storeId: number) {
     return this.categoryService.findAll(storeId);
   }
 
- 
-  
+  @Put('reorder/:storeId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Reordenar categorias da loja' })
+  @ApiParam({ name: 'storeId', type: Number })
+  @ApiBody({
+    schema: {
+      example: [
+        { id: 1, position: 0 },
+        { id: 3, position: 1 },
+      ],
+    },
+  })
+  reorder(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() dto: { id: number; position: number }[],
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    return this.categoryService.reorder(storeId, dto, user);
+  }
+
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -94,4 +114,12 @@ export class CategoryController {
     const user = req.user as any;
     return this.categoryService.remove(id, user);
   }
+
+  @Get('with-products/:storeId')
+@Public()
+@ApiOperation({ summary: 'Listar categorias com produtos da loja (público)' })
+@ApiParam({ name: 'storeId', type: Number })
+async findWithProducts(@Param('storeId', ParseIntPipe) storeId: number) {
+  return this.categoryService.findWithProducts(storeId)
+}
 }

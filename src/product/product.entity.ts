@@ -27,6 +27,9 @@ export class Product {
   @Column({ default: true })
   available: boolean;
 
+  @Column({ default: 0 })
+position: number;
+
   @Column({ nullable: true })
   imageId?: string;
 

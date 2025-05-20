@@ -19,8 +19,11 @@ import { ProductExtra } from '../product-extra/product-extra.entity';
 import { UserService } from '../user/user.service';
 import { Coupon } from '../coupon/coupon.entity';
 import { Payment } from '../payment/payment.entity';
+import { startOfDay, endOfDay } from 'date-fns';
+
+
 import {
-  PaymentMethod,
+  PaymentMethod,  
   PaymentStatus,
   PaymentType,
 } from '../payment/payment.entity';
@@ -127,6 +130,7 @@ export class OrderService {
         product,
         quantity: item.quantity,
         extras,
+        unitPrice: Number(product.price), 
       });
 
       orderItems.push(orderItem);
@@ -300,7 +304,7 @@ export class OrderService {
 
   async getCustomerRankingByStore(storeId: number) {
     if (!storeId) throw new NotFoundException('Loja não encontrada');
-
+  
     return await this.orderRepository
       .createQueryBuilder('order')
       .select('order.customerName', 'name')
@@ -308,9 +312,91 @@ export class OrderService {
       .addSelect('COUNT(order.id)', 'orders')
       .addSelect('SUM(order.total)', 'totalSpent')
       .where('order.storeId = :storeId', { storeId })
+      .andWhere('order.status != :status', { status: 'cancelado' }) // 👈 aqui filtra os cancelados
       .groupBy('order.customerName')
       .addGroupBy('order.customerPhone')
       .orderBy('SUM(order.total)', 'DESC')
       .getRawMany();
   }
+
+  async getSalesStats(storeId: number, startDate?: string, endDate?: string) {
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .select('COUNT(order.id)', 'totalOrders')
+      .addSelect('SUM(order.total)', 'totalRevenue')
+      .addSelect('COUNT(DISTINCT order.customerPhone)', 'uniqueCustomers')
+      .where('order.storeId = :storeId', { storeId })
+      .andWhere('order.status != :status', { status: 'cancelado' })
+  
+    if (startDate && endDate) {
+      query.andWhere('order.createdAt BETWEEN :start AND :end', {
+        start: new Date(startDate),
+        end: new Date(endDate),
+      })
+    }
+  
+    const result = await query.getRawOne()
+  
+    return {
+      totalOrders: parseInt(result.totalOrders),
+      totalRevenue: parseFloat(result.totalRevenue || 0),
+      uniqueCustomers: parseInt(result.uniqueCustomers),
+    }
+  }
+  async getTopProductsByStore(storeId: number, limit = 5) {
+    if (!storeId) throw new NotFoundException('Loja não encontrada');
+  
+    const result = await this.orderItemRepository
+      .createQueryBuilder('orderItem')
+      .innerJoin('orderItem.product', 'product')
+      .innerJoin('orderItem.order', 'order')
+      .select('product.id', 'productId')
+      .addSelect('product.name', 'productName')
+      .addSelect('SUM(orderItem.quantity)', 'quantity')
+      .addSelect('SUM(orderItem.quantity * orderItem.unitPrice)', 'total') // ✅ soma total em reais
+      .where('order.storeId = :storeId', { storeId })
+      .andWhere('order.status != :status', { status: OrderStatus.CANCELADO })
+      .groupBy('product.id')
+      .addGroupBy('product.name')
+      .orderBy('quantity', 'DESC')
+      .limit(limit)
+      .getRawMany();
+  
+    return result.map(item => ({
+      productId: Number(item.productId),
+      productName: item.productName,
+      quantity: Number(item.quantity),
+      total: Number(item.total), // garante que vem como número no frontend
+    }));
+  }
+
+  async getDailySalesByStore(storeId: number, startDate?: string, endDate?: string) {
+    if (!storeId) throw new NotFoundException('Loja não encontrada');
+  
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .select("DATE_TRUNC('day', order.createdAt)", 'date')
+      .addSelect('COUNT(order.id)', 'orders')
+      .addSelect('SUM(order.total)', 'total')
+      .where('order.storeId = :storeId', { storeId })
+      .andWhere('order.status != :status', { status: OrderStatus.CANCELADO })
+      .groupBy("DATE_TRUNC('day', order.createdAt)")
+      .orderBy('date', 'ASC');
+  
+    if (startDate && endDate) {
+      query.andWhere('order.createdAt BETWEEN :start AND :end', {
+        start: startOfDay(new Date(startDate)),
+        end: endOfDay(new Date(endDate)),
+      });
+    }
+  
+    const raw = await query.getRawMany();
+  
+    return raw.map((item) => ({
+      date: item.date,
+      orders: Number(item.orders),
+      total: Number(item.total),
+    }));
+  }
+
 }

@@ -19,6 +19,8 @@ import { OpeningHourModule } from './opening-hour/opening-hour.module';
 import {CloudflareR2Module} from './cloudflare/cloudflare-r2.module';
 import {PaymentModule} from './payment/payment.module';
 import {ProductExtraModule} from './product-extra/product-extra.module';
+import { ReportsModule } from './reports/reports.module';
+
 
 
 
@@ -51,6 +53,7 @@ import {ProductExtraModule} from './product-extra/product-extra.module';
     CloudflareR2Module,
     PaymentModule,
     ProductExtraModule,
+    ReportsModule,
      // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],
