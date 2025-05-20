@@ -31,18 +31,22 @@ export class SuperAdminService {
     const totalOrders = await this.orderRepo.count();
 
     const { sum: revenue } = await this.paymentRepo
-      .createQueryBuilder('p')
-      .select('SUM(p.amount)', 'sum')
-      .where('p.type = :type', { type: PaymentType.ORDER })
-      .getRawOne();
+    .createQueryBuilder('p')
+    .innerJoin('p.order', 'o') // join com pedido
+    .select('SUM(p.amount)', 'sum')
+    .where('p.type = :type', { type: PaymentType.ORDER })
+    .andWhere('o.status != :status', { status: 'cancelado' }) // ignora cancelados
+    .getRawOne();
+  
 
     const totalRevenue = Number(revenue) || 0;
 
-    const stores = await this.storeRepo.find({ select: ['id', 'isOpen'] });
-    const totalStores = stores.length;
-    const activeStores = stores.filter((s) => s.isOpen).length;
-    const inactiveStores = totalStores - activeStores;
+    const stores = await this.storeRepo.find({ select: ['id', 'isSuspended'] });
 
+    const totalStores = stores.length;
+    const suspendedStores = stores.filter((s) => s.isSuspended).length;
+    const activeStores = totalStores - suspendedStores;
+    
     const subscriptions = await this.subscriptionRepo.find();
     const activeSubscriptions = subscriptions.filter((s) => s.status !== SubscriptionStatus.EXPIRED).length;
     const expiredTrials = subscriptions.filter((s) => s.status === SubscriptionStatus.EXPIRED).length;
@@ -63,11 +67,13 @@ export class SuperAdminService {
       totalRevenue,
       totalStores,
       activeStores,
-      inactiveStores,
+      suspendedStores, // ✅ novo campo
       activeSubscriptions,
       expiredTrials,
       paymentsByType,
     };
+    
+    
   }
 
   async getStoresOverview() {
@@ -81,6 +87,7 @@ export class SuperAdminService {
         'store.isOpen',
         'orders.id',
         'orders.total',
+        'orders.status',
       ])
       .getMany();
 
@@ -89,8 +96,10 @@ export class SuperAdminService {
       storeName: store.name,
       subdomain: store.subdomain,
       totalOrders: store.orders.length,
-      totalRevenue: store.orders.reduce((acc, o) => acc + Number(o.total || 0), 0),
-      isOpen: store.isOpen,
+      totalRevenue: store.orders
+      .filter((o) => o.status !== 'cancelado') // ✅ ignora cancelados
+      .reduce((acc, o) => acc + Number(o.total || 0), 0),
+          isOpen: store.isOpen,
     }));
   }
 
@@ -267,10 +276,13 @@ export class SuperAdminService {
       .orderBy('month')
       .getRawMany();
 
-    const receita = await this.paymentRepo
+      const receita = await this.paymentRepo
       .createQueryBuilder('p')
+      .innerJoin('p.order', 'o') // junta com os pedidos
       .select("TO_CHAR(p.paymentDate, 'YYYY-MM')", 'month')
       .addSelect('SUM(p.amount)', 'total')
+      .where('p.type = :type', { type: PaymentType.ORDER })
+      .andWhere('o.status != :status', { status: 'cancelado' }) // ignora cancelados
       .groupBy('month')
       .orderBy('month')
       .getRawMany();
