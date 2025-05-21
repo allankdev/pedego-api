@@ -27,7 +27,7 @@ export class StripeService {
    */
   async createCheckoutSession(userId: number, plan: 'MONTHLY' | 'YEARLY') {
     const price = plan === 'MONTHLY' ? 4990 : 49900; // em centavos
-
+  
     const session = await this.stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -35,7 +35,7 @@ export class StripeService {
           price_data: {
             currency: 'brl',
             product_data: {
-              name: `Subscription ${plan === 'MONTHLY' ? 'Monthly' : 'Yearly'}`, // 🔤 inglês
+              name: `Subscription ${plan === 'MONTHLY' ? 'Monthly' : 'Yearly'}`,
             },
             unit_amount: price,
           },
@@ -47,13 +47,17 @@ export class StripeService {
         userId: String(userId),
         plan,
       },
-      // ✅ inclui session_id na success_url
       success_url: `${process.env.FRONTEND_URL}/signature/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/signature/error`,
     });
-
-    return session;
+  
+    // ✅ Retorna a URL esperada pelo frontend
+    return {
+      url: session.url,
+      sessionId: session.id,
+    };
   }
+  
 
   /**
    * Verifica e valida o evento vindo do Stripe Webhook
