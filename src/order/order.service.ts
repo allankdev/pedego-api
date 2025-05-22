@@ -20,6 +20,7 @@ import { UserService } from '../user/user.service';
 import { Coupon } from '../coupon/coupon.entity';
 import { Payment } from '../payment/payment.entity';
 import { startOfDay, endOfDay } from 'date-fns';
+import { Not, IsNull } from 'typeorm' 
 
 
 import {
@@ -72,11 +73,12 @@ export class OrderService {
       customerAddress,
       couponId,
       paymentMethod,
+      scheduledAt, // 👈 incluído aqui
       ...rest
     } = createOrderDto;
-
+  
     let user: User;
-
+  
     if (createOrderDto.userId) {
       user = await this.userRepository.findOne({ where: { id: createOrderDto.userId } });
       if (!user) throw new NotFoundException('Usuário não encontrado');
@@ -87,18 +89,27 @@ export class OrderService {
         address: customerAddress,
       });
     }
-
+  
     const store = await this.storeRepository.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Loja não encontrada');
-
+  
+    // ✅ validação do agendamento
+    let scheduledDate: Date | undefined;
+    if (scheduledAt) {
+      scheduledDate = new Date(scheduledAt);
+      if (scheduledDate <= new Date()) {
+        throw new BadRequestException('A data de agendamento deve ser futura');
+      }
+    }
+  
     let total = 0;
     let discountValue = 0;
     const orderItems: OrderItem[] = [];
-
+  
     for (const item of items) {
       const product = await this.productRepository.findOne({ where: { id: item.productId } });
       if (!product) throw new NotFoundException(`Produto ${item.productId} não encontrado`);
-
+  
       if (product.hasStockControl) {
         const stock = await this.stockRepository.findOne({
           where: { productId: product.id, storeId: store.id },
@@ -107,42 +118,42 @@ export class OrderService {
         if (stock.quantity < item.quantity) {
           throw new BadRequestException(`Estoque insuficiente para o produto ${product.name}`);
         }
-
+  
         stock.quantity -= item.quantity;
         await this.stockRepository.save(stock);
-
+  
         if (stock.quantity <= 0 && product.available) {
           product.available = false;
           await this.productRepository.save(product);
         }
       }
-
+  
       const extras = item.extraIds?.length
         ? await this.productExtraRepository.find({ where: { id: In(item.extraIds) } })
         : [];
-
+  
       total += Number(product.price) * item.quantity;
       for (const extra of extras) {
         total += Number(extra.price) * item.quantity;
       }
-
+  
       const orderItem = this.orderItemRepository.create({
         product,
         quantity: item.quantity,
         extras,
-        unitPrice: Number(product.price), 
+        unitPrice: Number(product.price),
       });
-
+  
       orderItems.push(orderItem);
     }
-
+  
     let neighborhood: Neighborhood | undefined;
     if (deliveryType === 'entrega' && neighborhoodId) {
       neighborhood = await this.neighborhoodRepository.findOne({ where: { id: neighborhoodId } });
       if (!neighborhood) throw new NotFoundException('Bairro não encontrado');
       total += Number(neighborhood.deliveryFee);
     }
-
+  
     let coupon: Coupon | undefined;
     if (couponId) {
       coupon = await this.couponRepository.findOne({ where: { id: couponId } });
@@ -151,11 +162,11 @@ export class OrderService {
       if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
         throw new BadRequestException('Cupom expirado');
       }
-
+  
       discountValue = (total * Number(coupon.discount)) / 100;
       total -= discountValue;
     }
-
+  
     const order = this.orderRepository.create({
       ...rest,
       customerName,
@@ -170,10 +181,11 @@ export class OrderService {
       neighborhood,
       coupon,
       paymentMethod,
+      scheduledAt: scheduledDate || null, // 👈 salva o agendamento
     });
-
+  
     const savedOrder = await this.orderRepository.save(order);
-
+  
     const payment = this.orderRepository.manager.create(Payment, {
       amount: total,
       paymentMethod,
@@ -181,18 +193,19 @@ export class OrderService {
       type: PaymentType.ORDER,
       order: savedOrder,
     });
-
+  
     await this.orderRepository.manager.save(payment);
-
+  
     savedOrder.payment = payment;
     await this.orderRepository.save(savedOrder);
-
+  
     if (store.autoPrint) {
       await this.printOrder(savedOrder);
     }
-
+  
     return await this.findOne(savedOrder.id);
   }
+  
 
   private async printOrder(order: Order) {
     console.log('🖨️ Impressão Automática de Pedido');
@@ -397,6 +410,29 @@ export class OrderService {
       orders: Number(item.orders),
       total: Number(item.total),
     }));
+  }
+
+
+  async findScheduledOrdersByStore(storeId: number): Promise<Order[]> {
+    if (!storeId) throw new NotFoundException('Loja não encontrada')
+  
+    return this.orderRepository.find({
+      where: {
+        store: { id: storeId },
+        scheduledAt: Not(IsNull()), // apenas pedidos com data agendada
+        status: Not(OrderStatus.CANCELADO), // excluir cancelados
+      },
+      relations: [
+        'user',
+        'payment',
+        'items',
+        'items.product',
+        'items.extras',
+        'neighborhood',
+        'coupon',
+      ],
+      order: { scheduledAt: 'ASC' }, // ordenar do mais próximo para o mais distante
+    })
   }
 
 }

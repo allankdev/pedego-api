@@ -47,6 +47,13 @@ export class Order {
   @Column({ type: 'enum', enum: PaymentMethod })
 paymentMethod: PaymentMethod;
 
+@Column({ type: 'timestamp', nullable: true })
+scheduledAt?: Date;
+
+@Column('decimal', { precision: 10, scale: 2, nullable: true })
+troco?: number;
+
+
   @Column({ nullable: true })
   observations?: string;
 

@@ -61,33 +61,38 @@ export class StoreService {
       where: { subdomain },
       relations: ['openingHours'],
     });
-
+  
     if (!store) {
       throw new NotFoundException(`Loja '${subdomain}' não encontrada.`);
     }
-
+  
     const now = dayjs().locale('pt-br');
-    const currentDay = now.format('dddd');
+    const today = now.format('YYYY-MM-DD');
+    const currentDay = now.format('dddd').toLowerCase();
     const currentTime = now.format('HH:mm');
-
+  
     const todayHour = store.openingHours.find(
       (h) => h.day.toLowerCase() === currentDay,
     );
-
-    const isNowWithinOpening =
+  
+    const isWithinOpeningHours =
       todayHour && todayHour.open <= currentTime && currentTime <= todayHour.close;
-
-    if (store.manualOverride && store.isOpen !== isNowWithinOpening) {
+  
+    // ⚠️ Resetar manualOverride se for um novo dia
+    if (store.manualOverride && store.manualOverrideDate !== today) {
       store.manualOverride = false;
-      store.isOpen = isNowWithinOpening;
+      store.manualOverrideDate = null;
+      store.isOpen = isWithinOpeningHours;
       await this.storeRepository.save(store);
     }
-
-    if (!store.manualOverride && store.isOpen !== isNowWithinOpening) {
-      store.isOpen = isNowWithinOpening;
+  
+    // ⚠️ Se não estiver com override manual, seguir horário automático
+    if (!store.manualOverride && store.isOpen !== isWithinOpeningHours) {
+      store.isOpen = isWithinOpeningHours;
       await this.storeRepository.save(store);
     }
-
+  
+    // ✅ Retorno completo com isOpen atualizado
     return {
       id: store.id,
       name: store.name,
@@ -99,6 +104,7 @@ export class StoreService {
       operationMode: store.operationMode,
       isOpen: store.isOpen,
       manualOverride: store.manualOverride,
+      manualOverrideDate: store.manualOverrideDate,
       deliveryTime: store.deliveryTime,
       minOrderValue: store.minOrderValue,
       printFontSize: store.printFontSize,
@@ -119,6 +125,7 @@ export class StoreService {
       updatedAt: store.updatedAt,
     };
   }
+  
 
   async update(
     subdomain: string,
@@ -222,13 +229,16 @@ export class StoreService {
     const isNowWithinOpening =
       todayHour && todayHour.open <= currentTime && currentTime <= todayHour.close;
 
-    if (auto) {
-      store.manualOverride = false;
-      store.isOpen = isNowWithinOpening;
-    } else {
-      store.manualOverride = true;
-      store.isOpen = !store.isOpen;
-    }
+      if (auto) {
+        store.manualOverride = false;
+        store.manualOverrideDate = null;
+        store.isOpen = isNowWithinOpening;
+      } else {
+        store.manualOverride = true;
+        store.manualOverrideDate = dayjs().format('YYYY-MM-DD'); // ⬅️ aqui está o segredo
+        store.isOpen = !store.isOpen;
+      }
+      
 
     return this.storeRepository.save(store);
   }
@@ -275,4 +285,18 @@ export class StoreService {
       console.error('Erro ao deletar imagem da R2:', error);
     }
   }
+
+  private async findEntityBySubdomain(subdomain: string): Promise<Store> {
+    const store = await this.storeRepository.findOne({
+      where: { subdomain },
+      relations: ['openingHours'],
+    });
+  
+    if (!store) {
+      throw new NotFoundException(`Loja '${subdomain}' não encontrada.`);
+    }
+  
+    return store;
+  }
+  
 }

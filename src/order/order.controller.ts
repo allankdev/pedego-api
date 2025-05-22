@@ -208,6 +208,15 @@ async getDailySales(
   return this.orderService.getDailySalesByStore(user.store?.id, startDate, endDate);
 }
 
+@UseGuards(JwtAuthGuard)
+@Get('my-store/scheduled')
+@ApiBearerAuth('access-token')
+@ApiOperation({ summary: 'Pedidos agendados da loja' })
+async getScheduledOrders(@Req() req: Request): Promise<Order[]> {
+  const user = req.user as any
+  return this.orderService.findScheduledOrdersByStore(user.store?.id)
+}
+
 
   
 }

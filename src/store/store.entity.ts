@@ -25,6 +25,10 @@ export class Store {
   @Column()
   description: string;
 
+  @Column({ type: 'date', nullable: true })
+manualOverrideDate?: string
+
+
   @Column({ unique: true })
   subdomain: string;
 

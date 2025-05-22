@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsNumber,
   Min,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -117,4 +118,22 @@ export class CreateOrderDto {
   @IsNumber()
   @Type(() => Number)
   couponId?: number;
+
+  @ApiPropertyOptional({
+    example: 50,
+    description: 'Valor para troco, caso o pagamento seja em dinheiro',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  troco?: number;
+
+
+  @ApiPropertyOptional({
+    example: '2025-05-23T14:00:00Z',
+    description: 'Data e hora agendada para o pedido',
+  })
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string;
 }
