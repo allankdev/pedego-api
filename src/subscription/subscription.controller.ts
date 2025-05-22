@@ -119,22 +119,6 @@ export class SubscriptionController {
     return this.stripeService.createCheckoutSession(req.user.sub, body.plan)
   }
 
-  @Post('purchase')
-  @Roles(UserRole.ADMIN)
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  @ApiOperation({ summary: 'Compra direta de plano de assinatura (ADMIN)' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        plan: { type: 'string', enum: ['MONTHLY', 'YEARLY'] },
-      },
-      required: ['plan'],
-    },
-  })
-  async purchase(@Request() req: any, @Body() body: { plan: 'MONTHLY' | 'YEARLY' }) {
-    return this.stripeService.createCheckoutSession(req.user.sub, body.plan)
-  }
 
   @Get('stripe/session/:id')
   @Public()

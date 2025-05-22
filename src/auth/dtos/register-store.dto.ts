@@ -1,5 +1,12 @@
-import { IsEmail, IsString, MinLength, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  IsNotEmpty,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger'
 
 export class RegisterStoreDto {
   @ApiProperty({
@@ -8,14 +15,14 @@ export class RegisterStoreDto {
   })
   @IsString({ message: 'O nome deve ser uma string' })
   @IsNotEmpty({ message: 'O nome não pode estar vazio' })
-  name: string;
+  name: string
 
   @ApiProperty({
     example: 'loja@email.com',
     description: 'E-mail de cadastro da loja',
   })
   @IsEmail({}, { message: 'E-mail inválido' })
-  email: string;
+  email: string
 
   @ApiProperty({
     example: 'senhaSegura123',
@@ -23,7 +30,7 @@ export class RegisterStoreDto {
   })
   @IsString({ message: 'A senha deve ser uma string' })
   @MinLength(6, { message: 'A senha deve ter no mínimo 6 caracteres' })
-  password: string;
+  password: string
 
   @ApiProperty({
     example: 'Loja do Allan',
@@ -31,7 +38,7 @@ export class RegisterStoreDto {
   })
   @IsString({ message: 'O nome da loja deve ser uma string' })
   @IsNotEmpty({ message: 'O nome da loja não pode estar vazio' })
-  storeName: string;
+  storeName: string
 
   @ApiProperty({
     example: 'Loja especializada em lanches e bebidas',
@@ -39,7 +46,7 @@ export class RegisterStoreDto {
   })
   @IsString({ message: 'A descrição deve ser uma string' })
   @IsNotEmpty({ message: 'A descrição não pode estar vazia' })
-  description: string;
+  description: string
 
   @ApiProperty({
     example: 'loja-do-allan',
@@ -47,5 +54,23 @@ export class RegisterStoreDto {
   })
   @IsString({ message: 'O subdomínio deve ser uma string' })
   @IsNotEmpty({ message: 'O subdomínio não pode estar vazio' })
-  subdomain: string;
+  subdomain: string
+
+  @ApiProperty({
+    example: true,
+    description: 'Indica se o usuário aceitou os termos de uso e política de privacidade',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo acceptTerms deve ser verdadeiro ou falso' })
+  acceptTerms?: boolean
+
+  @ApiProperty({
+    example: false,
+    description: 'Indica se o usuário deseja receber comunicações de marketing',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo acceptMarketing deve ser verdadeiro ou falso' })
+  acceptMarketing?: boolean
 }
