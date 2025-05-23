@@ -93,7 +93,12 @@ export class OrderService {
     const store = await this.storeRepository.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Loja não encontrada');
   
-    // ✅ validação do agendamento
+    // ✅ Validação: agendamento só se a loja permitir
+    if (scheduledAt && !store.allowScheduledOrders) {
+      throw new BadRequestException('Esta loja não aceita pedidos agendados.');
+    }
+  
+    // ✅ validação do agendamento (data futura)
     let scheduledDate: Date | undefined;
     if (scheduledAt) {
       scheduledDate = new Date(scheduledAt);
@@ -205,6 +210,7 @@ export class OrderService {
   
     return await this.findOne(savedOrder.id);
   }
+  
   
 
   private async printOrder(order: Order) {

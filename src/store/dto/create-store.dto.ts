@@ -103,6 +103,12 @@ export class CreateStoreDto {
   @IsString({ each: true })
   paymentMethods?: string[];
 
+@ApiProperty({ example: true, required: false, description: 'Se a loja aceita pedidos agendados' })
+@IsOptional()
+@IsBoolean()
+allowScheduledOrders?: boolean;
+
+
   @ApiProperty({ example: 'avatar_image_id', required: false })
   @IsOptional()
   @IsString()

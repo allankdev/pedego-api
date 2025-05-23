@@ -130,4 +130,7 @@ isSuspended: boolean;
 
   @OneToMany(() => Stock, (stock) => stock.store)
   stocks: Stock[];
+  
+  @Column({ default: false })
+allowScheduledOrders: boolean; // Define se a loja aceita agendamento
 }

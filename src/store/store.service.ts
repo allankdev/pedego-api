@@ -109,6 +109,7 @@ export class StoreService {
       minOrderValue: store.minOrderValue,
       printFontSize: store.printFontSize,
       printPaperSize: store.printPaperSize,
+      allowScheduledOrders: store.allowScheduledOrders,
       autoPrint: Boolean(store.autoPrint),
       paymentMethods: store.paymentMethods,
       avatarImageId: store.avatarImageId,
