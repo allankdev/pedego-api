@@ -1,15 +1,16 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger.config';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import * as cookieParser from 'cookie-parser';
+import * as cookieParser from 'cookie-parser'; // Já importado
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // 🍪 Suporte a cookies
-  app.use(cookieParser());
+  app.use(cookieParser()); // ✅ Correto: Essencial para ler cookies.
 
   // ✅ Middleware body-parser com verify para capturar o rawBody na rota do Stripe
   app.use(
@@ -24,8 +25,8 @@ async function bootstrap() {
 
   // 🌐 CORS
   app.enableCors({
-    origin: 'http://localhost:4000',
-    credentials: true,
+    origin: 'http://localhost:4000', // 👈 VERIFIQUE: Deve ser a URL EXATA do seu frontend.
+    credentials: true, // ✅ Correto: Permite o envio de cookies em requisições cross-origin.
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });

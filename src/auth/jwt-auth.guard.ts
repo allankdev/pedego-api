@@ -24,8 +24,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       const request = context.switchToHttp().getRequest();
       const user = request.user;
 
-      // ✅ Permite acesso se for SUPER_ADMIN mesmo sem store
-      if (user.role !== 'SUPER_ADMIN' && !user?.store) {
+      // ✅ Permite acesso se for SUPER_ADMIN OU CUSTOMER mesmo sem store.
+      // Só ADMIN exige store
+      if (
+        user.role !== 'SUPER_ADMIN' &&
+        user.role !== 'CUSTOMER' &&
+        !user?.store
+      ) {
         throw new UnauthorizedException('Loja não associada ao usuário');
       }
 

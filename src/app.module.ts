@@ -1,5 +1,6 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config'; // Já importado e correto
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -11,7 +12,7 @@ import { UserModule } from './user/user.module';
 import { GeolocationModule } from './geolocation/geolocation.module';
 import { NotificationModule } from './notification/notification.module';
 import { StockModule } from './stock/stock.module';
-import { CouponModule } from './coupon/coupon.module'; // ✅ ADICIONADO
+import { CouponModule } from './coupon/coupon.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { NeighborhoodModule } from './neighborhood/neighborhood.module';
 import { CategoryModule } from './category/category.module';
@@ -22,12 +23,9 @@ import {ProductExtraModule} from './product-extra/product-extra.module';
 import { ReportsModule } from './reports/reports.module';
 import {SuperAdminModule} from './super-admin/super-admin.module';
 
-
-
-
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true }), // ✅ Correto: Carrega as variáveis de ambiente globalmente
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -56,7 +54,6 @@ import {SuperAdminModule} from './super-admin/super-admin.module';
     ProductExtraModule,
     ReportsModule,
     SuperAdminModule,
-     // ✅ ADICIONADO AQUI
   ],
   controllers: [AppController],
   providers: [AppService],

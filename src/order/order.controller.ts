@@ -84,9 +84,16 @@ export class OrderController {
   @ApiOperation({ summary: 'Lista os pedidos do usuário autenticado' })
   @ApiResponse({ status: 200, type: [Order] })
   async findMyOrders(@Req() req: Request): Promise<Order[]> {
-    const user = req.user as any
-    return await this.orderService.findByUserId(user.id)
+    console.log('🚩 [OrderController] Entrou no endpoint /orders/me');
+    const user = req.user as any;
+    console.log('🟦 [OrderController] req.user:', user);
+  
+    const orders = await this.orderService.findByUserId(user.id);
+    console.log('🟩 [OrderController] Pedidos retornados:', Array.isArray(orders) ? orders.length : orders);
+  
+    return orders;
   }
+  
 
   @UseGuards(JwtAuthGuard)
   @Get('my-store')
