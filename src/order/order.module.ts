@@ -10,10 +10,10 @@ import { Store } from '../store/store.entity';
 import { Neighborhood } from '../neighborhood/neighborhood.entity';
 import { Stock } from '../stock/stock.entity';
 import { ProductExtraModule } from '../product-extra/product-extra.module';
-import { UserModule } from '../user/user.module'; // ✅ necessário para injetar UserService
+import { UserModule } from '../user/user.module';
 import { Coupon } from '../coupon/coupon.entity';
 import { Payment } from '../payment/payment.entity';
-
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -29,7 +29,11 @@ import { Payment } from '../payment/payment.entity';
       Payment,
     ]),
     ProductExtraModule,
-    UserModule, // ✅ aqui estava faltando
+    UserModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '90d' },
+    }),
   ],
   controllers: [OrderController],
   providers: [OrderService],

@@ -11,8 +11,9 @@ import {
   UseGuards,
   Req,
   Query,
+  Res,
 } from '@nestjs/common'
-import { Request } from 'express'
+import { Request, Response } from 'express'
 import { OrderService } from './order.service'
 import { Order } from './order.entity'
 import { CreateOrderDto } from './dto/create-order.dto'
@@ -27,23 +28,44 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger'
+import { JwtService } from '@nestjs/jwt' // Adicionado
 
 @ApiTags('Orders')
 @Controller('orders')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly jwtService: JwtService, // Adicionado
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo pedido (autenticado ou anônimo)' })
   @ApiBody({ type: CreateOrderDto })
   @ApiResponse({ status: 201, description: 'Pedido criado com sucesso', type: Order })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async createOrder(@Body() orderData: CreateOrderDto, @Req() req: Request): Promise<Order> {
+  async createOrder(
+    @Body() orderData: CreateOrderDto,
+    @Req() req: Request,
+    @Res() res: Response // Use Response para personalizar o retorno
+  ) {
     const user = req.user as any
-    return await this.orderService.createOrder({
+    const order = await this.orderService.createOrder({
       ...orderData,
       userId: user?.id ?? null,
     })
+    const customer = order.user
+
+    // Se não estiver autenticado (cliente anônimo), retorna magicToken
+    let magicToken: string | undefined = undefined
+    if (!user || customer?.role === 'CUSTOMER') {
+      magicToken = this.jwtService.sign(
+        { userId: customer.id, role: 'CUSTOMER' },
+        { expiresIn: '90d', secret: process.env.JWT_SECRET }
+      )
+    }
+
+    // Retorna o pedido + magicToken (para o frontend salvar e usar)
+    return res.json({ order, magicToken })
   }
 
   @UseGuards(JwtAuthGuard)
@@ -179,44 +201,41 @@ export class OrderController {
   }
 
   @UseGuards(JwtAuthGuard)
-@Get('my-store/daily-sales')
-@ApiBearerAuth('access-token')
-@ApiOperation({ summary: 'Vendas diárias da loja do admin autenticado' })
-@ApiQuery({ name: 'startDate', required: false })
-@ApiQuery({ name: 'endDate', required: false })
-@ApiResponse({
-  status: 200,
-  description: 'Retorna vendas diárias (data, pedidos e total)',
-  schema: {
-    type: 'array',
-    items: {
-      type: 'object',
-      properties: {
-        date: { type: 'string', format: 'date' },
-        orders: { type: 'number' },
-        total: { type: 'number' },
+  @Get('my-store/daily-sales')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Vendas diárias da loja do admin autenticado' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna vendas diárias (data, pedidos e total)',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', format: 'date' },
+          orders: { type: 'number' },
+          total: { type: 'number' },
+        },
       },
     },
-  },
-})
-async getDailySales(
-  @Req() req: Request,
-  @Query('startDate') startDate?: string,
-  @Query('endDate') endDate?: string,
-) {
-  const user = req.user as any;
-  return this.orderService.getDailySalesByStore(user.store?.id, startDate, endDate);
-}
+  })
+  async getDailySales(
+    @Req() req: Request,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const user = req.user as any
+    return this.orderService.getDailySalesByStore(user.store?.id, startDate, endDate)
+  }
 
-@UseGuards(JwtAuthGuard)
-@Get('my-store/scheduled')
-@ApiBearerAuth('access-token')
-@ApiOperation({ summary: 'Pedidos agendados da loja' })
-async getScheduledOrders(@Req() req: Request): Promise<Order[]> {
-  const user = req.user as any
-  return this.orderService.findScheduledOrdersByStore(user.store?.id)
-}
-
-
-  
+  @UseGuards(JwtAuthGuard)
+  @Get('my-store/scheduled')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Pedidos agendados da loja' })
+  async getScheduledOrders(@Req() req: Request): Promise<Order[]> {
+    const user = req.user as any
+    return this.orderService.findScheduledOrdersByStore(user.store?.id)
+  }
 }

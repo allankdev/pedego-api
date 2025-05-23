@@ -10,9 +10,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => {
-          const token = req.cookies?.token
-          console.log('📦 Cookie Token:', token)
-          return token
+          // Primeiro tenta cookie (admin), depois header (cliente)
+          const cookieToken = req.cookies?.token
+          if (cookieToken) return cookieToken
+
+          const authHeader = req.headers['authorization']
+          if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+            return authHeader.replace('Bearer ', '')
+          }
+          return null
         },
       ]),
       secretOrKey: process.env.JWT_SECRET,
@@ -21,20 +27,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     console.log('🎯 Payload decodificado:', payload)
-  
-    const user = await this.userService.findByIdWithStore(payload.sub)
-  
+
+    // Para o login mágico do cliente, pode vir { userId, role }, para admin continua { sub, role }
+    const userId = payload.sub || payload.userId
+
+    const user = await this.userService.findByIdWithStore(userId)
     if (!user) {
-      console.error('Usuário não encontrado com ID:', payload.sub)
+      console.error('Usuário não encontrado com ID:', userId)
       throw new UnauthorizedException('Usuário não encontrado')
     }
-  
+
     return {
-      sub: user.id, // 👈 precisa disso!
+      sub: user.id,
       role: user.role,
       storeId: user.store?.id,
-      store: user.store, // ainda pode manter se necessário
+      store: user.store,
     }
   }
-  
 }
