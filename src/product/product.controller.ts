@@ -15,13 +15,13 @@ import {
   HttpStatus,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common'
-import { Request } from 'express'
-import { ProductService } from './product.service'
-import { Product } from './product.entity'
-import { Query } from '@nestjs/common'
-import { CreateProductDto } from './dto/create-product.dto'
-import { UpdateProductDto } from './dto/update-product.dto'
+  Query,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { ProductService } from './product.service';
+import { Product } from './product.entity';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -30,13 +30,13 @@ import {
   ApiResponse,
   ApiParam,
   ApiBearerAuth,
-} from '@nestjs/swagger'
-import { JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { RolesGuard } from '../auth/roles.guard'
-import { Roles } from '../auth/roles.decorator'
-import { UserRole } from '../user/enums/user-role.enum'
-import { FileInterceptor } from '@nestjs/platform-express'
-import { memoryStorage } from 'multer'
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../user/enums/user-role.enum';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Products')
 @Controller('products')
@@ -47,7 +47,7 @@ export class ProductController {
   @ApiOperation({ summary: 'Lista todos os produtos' })
   @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso', type: [Product] })
   async findAll(): Promise<Product[]> {
-    return this.productService.findAll()
+    return this.productService.findAll();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,8 +57,8 @@ export class ProductController {
   @ApiOperation({ summary: 'Lista produtos da loja do admin autenticado' })
   @ApiResponse({ status: 200, description: 'Lista de produtos da loja', type: [Product] })
   async findByStore(@Req() req: Request): Promise<Product[]> {
-    const user = req.user as any
-    return this.productService.findByStoreId(user.store?.id)
+    const user = req.user as any;
+    return this.productService.findByStoreId(user.store?.id);
   }
 
   @Get(':id')
@@ -66,7 +66,7 @@ export class ProductController {
   @ApiParam({ name: 'id', type: Number, description: 'ID do produto' })
   @ApiResponse({ status: 200, description: 'Produto encontrado', type: Product })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Product> {
-    return this.productService.findOne(id)
+    return this.productService.findOne(id);
   }
 
   @Get('store/:storeId')
@@ -77,9 +77,8 @@ export class ProductController {
     @Param('storeId', ParseIntPipe) storeId: number,
     @Query('categoryId') categoryId?: number,
   ): Promise<Product[]> {
-    return this.productService.findPublicByStoreWithFilter(storeId, categoryId)
+    return this.productService.findPublicByStoreWithFilter(storeId, categoryId);
   }
-
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -98,6 +97,12 @@ export class ProductController {
         available: { type: 'boolean' },
         storeId: { type: 'number' },
         categoryId: { type: 'number' },
+        hasStockControl: { type: 'boolean' },
+        hasDayControl: { type: 'boolean' },
+        availableDays: { 
+          type: 'string', 
+          description: 'Array de dias da semana (formato JSON string). Ex: "[1,3,5]" para Segunda, Quarta e Sexta' 
+        },
         extraGroups: {
           type: 'string',
           description: 'Grupos de extras (formato JSON string)',
@@ -113,11 +118,23 @@ export class ProductController {
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<Product> {
     try {
-      // ✅ Parse booleanos manualmente
+      // Parse booleanos existentes
       body.available = body.available === 'true' || body.available === true;
       body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
-  
-      // ✅ Parse seguro do extraGroups se for string
+      
+      // ✅ NOVOS CAMPOS PARA CONTROLE DE DIAS
+      body.hasDayControl = body.hasDayControl === 'true' || body.hasDayControl === true;
+      
+      // Parse do array de dias disponíveis
+      if (body.availableDays && typeof body.availableDays === 'string') {
+        try {
+          body.availableDays = JSON.parse(body.availableDays);
+        } catch {
+          throw new HttpException('Formato inválido para availableDays', HttpStatus.BAD_REQUEST);
+        }
+      }
+
+      // Parse seguro do extraGroups se for string
       if (body.extraGroups && typeof body.extraGroups === 'string') {
         try {
           body.extraGroups = JSON.parse(body.extraGroups);
@@ -125,7 +142,7 @@ export class ProductController {
           throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
         }
       }
-  
+
       return this.productService.create(body, file);
     } catch (error) {
       throw new HttpException(
@@ -158,6 +175,12 @@ export class ProductController {
         available: { type: 'boolean' },
         storeId: { type: 'number' },
         categoryId: { type: 'number' },
+        hasStockControl: { type: 'boolean' },
+        hasDayControl: { type: 'boolean' },
+        availableDays: { 
+          type: 'string', 
+          description: 'Array de dias da semana (formato JSON string). Ex: "[1,3,5]" para Segunda, Quarta e Sexta' 
+        },
         removeImage: { type: 'string', enum: ['true', 'false'] },
         extraGroups: {
           type: 'string',
@@ -176,7 +199,19 @@ export class ProductController {
     try {
       body.available = body.available === 'true' || body.available === true;
       body.hasStockControl = body.hasStockControl === 'true' || body.hasStockControl === true;
-  
+      
+      // ✅ NOVOS CAMPOS PARA CONTROLE DE DIAS
+      body.hasDayControl = body.hasDayControl === 'true' || body.hasDayControl === true;
+      
+      // Parse do array de dias disponíveis
+      if (body.availableDays && typeof body.availableDays === 'string') {
+        try {
+          body.availableDays = JSON.parse(body.availableDays);
+        } catch {
+          throw new HttpException('Formato inválido para availableDays', HttpStatus.BAD_REQUEST);
+        }
+      }
+
       if (body.extraGroups && typeof body.extraGroups === 'string') {
         try {
           body.extraGroups = JSON.parse(body.extraGroups);
@@ -184,12 +219,12 @@ export class ProductController {
           throw new HttpException('Formato inválido para extraGroups', HttpStatus.BAD_REQUEST);
         }
       }
-  
-      // ✅ Se a imagem foi removida no frontend e não foi enviada uma nova, limpar imageId
+
+      // Se a imagem foi removida no frontend e não foi enviada uma nova, limpar imageId
       if (body.removeImage === 'true' && !file) {
         body.imageId = null;
       }
-  
+
       return this.productService.update(id, body, file);
     } catch (error) {
       throw new HttpException(
@@ -202,7 +237,6 @@ export class ProductController {
       );
     }
   }
-  
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -213,7 +247,7 @@ export class ProductController {
   @ApiResponse({ status: 200, description: 'Produto removido com sucesso' })
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     try {
-      return this.productService.remove(id)
+      return this.productService.remove(id);
     } catch (error) {
       throw new HttpException(
         {
@@ -222,7 +256,7 @@ export class ProductController {
           message: error.message,
         },
         HttpStatus.BAD_REQUEST,
-      )
+      );
     }
   }
 }

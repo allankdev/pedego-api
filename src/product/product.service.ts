@@ -46,6 +46,17 @@ export class ProductService {
     });
   }
 
+  // ✅ MÉTODO AUXILIAR PARA VERIFICAR SE O PRODUTO ESTÁ DISPONÍVEL NO DIA ATUAL
+  private isProductAvailableToday(product: Product): boolean {
+    if (!product.hasDayControl || !product.availableDays || product.availableDays.length === 0) {
+      return true;
+    }
+    const today = new Date().getDay(); // 0=Domingo, ..., 6=Sábado
+    // availableDays pode ser string[] ou number[], sempre normaliza para number
+    const days = (product.availableDays as any[]).map(Number);
+    return days.includes(today);
+  }
+
   async findAll(): Promise<Product[]> {
     return this.productRepository.find({
       relations: ['category', 'store'],
@@ -74,7 +85,13 @@ export class ProductService {
   }
 
   async create(createProductDto: CreateProductDto, file?: Express.Multer.File): Promise<Product> {
-    const { categoryId, storeId, ...data } = createProductDto;
+    const {
+      categoryId,
+      storeId,
+      hasDayControl,
+      availableDays,
+      ...data
+    } = createProductDto;
     const product = this.productRepository.create(data);
 
     if (categoryId) {
@@ -93,6 +110,18 @@ export class ProductService {
       product.store = store as any;
     } else {
       throw new NotFoundException('StoreId é obrigatório');
+    }
+
+    // ✅ CONTROLE DE DIAS DA SEMANA (NUNCA BUGA)
+    if (hasDayControl) {
+      product.hasDayControl = true;
+      // Aceita tanto string[] quanto number[]
+      product.availableDays = Array.isArray(availableDays)
+        ? availableDays.map(Number)
+        : [];
+    } else {
+      product.hasDayControl = false;
+      product.availableDays = null;
     }
 
     if (file) {
@@ -115,12 +144,11 @@ export class ProductService {
 
     const savedProduct = await this.productRepository.save(product);
 
-    // Criação do estoque
     if (savedProduct.hasStockControl) {
       const stock = this.stockRepository.create({
-        product: savedProduct,  // Atribuindo o produto diretamente
+        product: savedProduct,
         storeId: storeId,
-        quantity: 0,  // Inicialize com 0 ou o valor desejado
+        quantity: 0,
       });
       await this.stockRepository.save(stock);
     }
@@ -138,13 +166,31 @@ export class ProductService {
       throw new NotFoundException(`Produto com o ID ${id} não encontrado para atualização`);
     }
 
-    const { categoryId, ...data } = updateProductDto;
+    const {
+      categoryId,
+      hasDayControl,
+      availableDays,
+      ...data
+    } = updateProductDto;
+
     Object.assign(product, data);
 
     if (categoryId) {
       const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
       if (!category) throw new NotFoundException('Categoria não encontrada');
       product.category = category;
+    }
+
+    // ✅ CONTROLE DE DIAS DA SEMANA NO UPDATE (NUNCA BUGA)
+    if (typeof hasDayControl !== 'undefined') {
+      product.hasDayControl = !!hasDayControl;
+    }
+    if (product.hasDayControl) {
+      product.availableDays = Array.isArray(availableDays)
+        ? availableDays.map(Number)
+        : [];
+    } else {
+      product.availableDays = null;
     }
 
     if (file) {
@@ -189,8 +235,7 @@ export class ProductService {
         throw new NotFoundException(`Produto com o ID ${id} não encontrado para remoção`);
       }
 
-      // Remover o estoque associado ao produto
-      await this.stockRepository.delete({ product: { id } }); // Correção do relacionamento 'product'
+      await this.stockRepository.delete({ product: { id } });
       await this.productExtraService.removeAllGroupsByProductId(id);
 
       if (product.imageId) {
@@ -217,35 +262,37 @@ export class ProductService {
   }
 
   async findPublicByStoreId(storeId: number): Promise<Product[]> {
-    return this.productRepository.find({
+    const products = await this.productRepository.find({
       where: {
         store: { id: storeId },
         available: true,
       },
-      relations: ['category', 'store'], // se necessário
+      relations: ['category', 'store'],
       order: { id: 'DESC' },
-    })
+    });
+
+    return products.filter(product => this.isProductAvailableToday(product));
   }
 
   async findPublicByStoreWithFilter(storeId: number, categoryId?: number): Promise<Product[]> {
     const where: any = {
       store: { id: storeId },
       available: true,
-    }
-  
+    };
+
     if (categoryId) {
-      where.category = { id: categoryId }
+      where.category = { id: categoryId };
     }
-  
-    return this.productRepository.find({
+
+    const products = await this.productRepository.find({
       where,
       relations: ['category', 'store'],
       order: {
         position: 'ASC',
         name: 'ASC',
       },
-    })
+    });
+
+    return products.filter(product => this.isProductAvailableToday(product));
   }
-  
-  
 }

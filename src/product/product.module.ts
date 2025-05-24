@@ -6,16 +6,17 @@ import { Product } from './product.entity';
 import { Store } from '../store/store.entity';
 import { Category } from '../category/category.entity';
 import { StockModule } from '../stock/stock.module';
-import { ProductExtraModule } from '../product-extra/product-extra.module'; // ✅ Importar aqui
-import { Stock } from '../stock/stock.entity';  // ✅ Importar a entidade Stock
+import { ProductExtraModule } from '../product-extra/product-extra.module';
+import { Stock } from '../stock/stock.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, Store, Category, Stock]),  // ✅ Adicionar Stock aqui
+    TypeOrmModule.forFeature([Product, Store, Category, Stock]),
     StockModule,
-    ProductExtraModule, // ✅ IMPORTAÇÃO ADICIONADA
+    ProductExtraModule,
   ],
   controllers: [ProductController],
   providers: [ProductService],
+  exports: [ProductService], // Exportar o service caso seja usado em outros módulos
 })
 export class ProductModule {}

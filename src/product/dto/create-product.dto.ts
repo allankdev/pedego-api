@@ -6,6 +6,9 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -53,6 +56,30 @@ export class CreateProductDto {
   @IsBoolean()
   @Type(() => Boolean)
   hasStockControl?: boolean;
+
+  // ✅ NOVOS CAMPOS PARA CONTROLE DE DIAS DA SEMANA
+  @ApiProperty({
+    default: false,
+    description: 'Define se o produto tem controle por dias da semana',
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  hasDayControl?: boolean;
+
+  @ApiProperty({
+    example: [1, 3, 5],
+    required: false,
+    description: 'Dias da semana em que o produto está disponível (0=Domingo, 1=Segunda, ..., 6=Sábado)',
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  @Type(() => Number)
+  availableDays?: number[];
 
   @ApiProperty({
     required: false,
